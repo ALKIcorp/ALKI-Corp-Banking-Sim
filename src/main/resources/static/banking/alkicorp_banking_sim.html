@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banking Sim</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/alkicorp_banking_sim.css">
+</head>
+<body>
+    <div class="aspect-ratio-container">
+        <div class="game-screen">
+
+            <div class="hud" id="game-hud" style="display: none;"> <div>
+                    <span>Mode: <span id="hud-mode">---</span></span> |
+                    <span>Date: <span id="hud-date">---</span></span>
+                </div>
+                <div>
+                    <span id="save-indicator" class="save-indicator">Saving...</span>
+                    <button id="quit-button" class="bw-button">
+                        <span class="btn-icon">✖</span> Quit
+                    </button>
+                </div>
+            </div>
+
+            <div id="home-screen" class="screen active">
+                <div class="bw-panel flex-grow flex flex-col justify-center items-center">
+                    <h1 class="bw-header mb-4">
+                        <span class="header-icon">🏦</span> Banking Sim <span class="header-icon">🏦</span>
+                    </h1>
+                    <div class="save-slots w-full max-w-xs">
+                        <div class="slot">
+                            <span class="slot-info" id="slot-1-info">Slot 1: Empty</span>
+                            <div class="slot-actions">
+                                <button class="bw-button" onclick="startGame(1)"><span class="btn-icon">▶</span> New</button>
+                                <button class="bw-button" onclick="loadGame(1)" id="load-btn-1" disabled><span class="btn-icon">📂</span> Load</button>
+                            </div>
+                        </div>
+                        <div class="slot">
+                            <span class="slot-info" id="slot-2-info">Slot 2: Empty</span>
+                            <div class="slot-actions">
+                                <button class="bw-button" onclick="startGame(2)"><span class="btn-icon">▶</span> New</button>
+                                <button class="bw-button" onclick="loadGame(2)" id="load-btn-2" disabled><span class="btn-icon">📂</span> Load</button>
+                            </div>
+                        </div>
+                        <div class="slot">
+                            <span class="slot-info" id="slot-3-info">Slot 3: Empty</span>
+                            <div class="slot-actions">
+                                <button class="bw-button" onclick="startGame(3)"><span class="btn-icon">▶</span> New</button>
+                                <button class="bw-button" onclick="loadGame(3)" id="load-btn-3" disabled><span class="btn-icon">📂</span> Load</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="add-client-screen" class="screen">
+                <div class="bw-panel">
+                    <h2 class="bw-header"><span class="header-icon">👤</span> New Client Registration</h2>
+                    <label for="client-name-input" class="bw-label">Client Name:</label>
+                    <input type="text" id="client-name-input" class="bw-input" placeholder="Enter client's full name">
+                    <p class="text-xs text-gray-500 mb-4">Opens a checking account and issues a debit card.</p>
+                    <div class="flex justify-end gap-2">
+                        <button class="bw-button" onclick="switchToBankView()"><span class="btn-icon">↩</span> Cancel</button>
+                        <button class="bw-button" onclick="createClient()"><span class="btn-icon">✔</span> Register Client</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="client-view-screen" class="screen">
+                 <div class="bw-panel">
+                     <h2 class="bw-header"><span class="header-icon">💳</span> Client: <span id="client-view-name"></span></h2>
+                     <div class="grid grid-cols-2 gap-4 mb-4">
+                         <div>
+                             <h3 class="text-sm font-semibold mb-1 uppercase">Checking Account</h3>
+                             <p>Balance: $<span id="client-view-balance">0.00</span></p>
+                         </div>
+                         <div>
+                             <h3 class="text-sm font-semibold mb-1 uppercase">Debit Card</h3>
+                             <p class="text-xs">Number: <span id="client-view-card-number"></span></p>
+                             <p class="text-xs">Expires: <span id="client-view-card-expiry"></span></p>
+                             <p class="text-xs">CVV: <span id="client-view-card-cvv"></span></p>
+                         </div>
+                     </div>
+                     <div class="grid grid-cols-2 gap-4">
+                         <div>
+                             <label for="deposit-amount" class="bw-label">Deposit:</label>
+                             <input type="number" id="deposit-amount" class="bw-input" placeholder="Amount" min="0" step="0.01">
+                             <button class="bw-button w-full" onclick="performDeposit()"><span class="btn-icon">➕</span> Deposit</button>
+                         </div>
+                         <div>
+                             <label for="withdraw-amount" class="bw-label">Withdraw:</label>
+                             <input type="number" id="withdraw-amount" class="bw-input" placeholder="Amount" min="0" step="0.01">
+                             <p class="text-xs text-gray-500 mb-1">Limit: $<span id="client-view-withdraw-limit"></span> / Day</p>
+                             <button class="bw-button w-full" onclick="performWithdraw()"><span class="btn-icon">➖</span> Withdraw</button>
+                         </div>
+                     </div>
+                     <p id="client-error-message" class="text-red-600 text-xs mt-2 text-center"></p>
+
+                     <div class="transaction-log">
+                         <h4><span class="header-icon">📜</span> Transaction History</h4>
+                         <div id="client-log-area" class="log-area">
+                             <p class="text-xs text-gray-500">No transactions yet.</p>
+                         </div>
+                     </div>
+                 </div>
+                 <button class="bw-button mt-2 self-center" onclick="switchToBankView()"><span class="btn-icon">🏦</span> Back to Bank View</button>
+            </div>
+
+            <div id="bank-view-screen" class="screen">
+                <div class="bw-panel">
+                    <h2 class="bw-header"><span class="header-icon">💴</span> ALKI corp.</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-sm">
+                            <p>Liquid Cash: $<span id="bank-liquid-cash">0.00</span></p>
+                            <p>Invested: $<span id="bank-invested-amount">0.00</span></p>
+                            <p class="font-semibold">Total Assets: $<span id="bank-total-assets">0.00</span></p>
+                        </div>
+                         <button class="bw-button" onclick="switchToAddClientView()"><span class="btn-icon">👤</span> Add New Client</button>
+                    </div>
+
+                    <h3 class="text-sm font-semibold mb-2 border-t pt-2 uppercase flex items-center gap-2"><span class="header-icon">👥</span> Clients</h3>
+                    <div id="client-list" class="mb-4 max-h-32 overflow-y-auto border p-2 rounded bg-gray-100">
+                        <p class="text-xs text-gray-500">No clients yet.</p>
+                    </div>
+
+                     <h3 class="text-sm font-semibold mb-2 border-t pt-2 uppercase flex items-center gap-2"><span class="header-icon">📈</span> Analytics</h3>
+                     <div class="grid grid-cols-2 gap-4">
+                         <div>
+                             <div class="chart-container">
+                                 <canvas id="clientMoneyChart"></canvas>
+                             </div>
+                             <p class="chart-title">Client Deposits</p>
+                         </div>
+                         <div>
+                              <div class="chart-container">
+                                  <canvas id="activityChart"></canvas>
+                              </div>
+                              <p class="chart-title">Activity Over Time</p>
+                         </div>
+                     </div>
+
+                    <h3 class="text-sm font-semibold mb-2 border-t pt-2 uppercase flex items-center gap-2"><span class="header-icon">💰</span> Investments</h3>
+                    <div class="text-center">
+                        <button class="bw-button" onclick="switchToInvestmentView()"><span class="btn-icon">⚙️</span> Manage Investments</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="investment-view-screen" class="screen">
+                 <div class="bw-panel">
+                    <h2 class="bw-header"><span class="header-icon">💼</span> Investment Portfolio</h2>
+                    <p class="text-sm mb-2 text-center">Bank Liquid Cash: $<span id="invest-view-liquid-cash">0.00</span></p>
+
+                    <div class="border p-3 rounded bg-gray-100 mb-4">
+                        <h3 class="font-semibold text-center mb-2">S&P 500 Index Fund</h3>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-3">
+                            <span>Value: $<span id="sp500-current-value">0.00</span></span>
+                            <span>Holdings: $<span id="sp500-holdings">0.00</span></span>
+                            <span>Growth (Ann.): 10%</span>
+                            <span>Dividend (Ann.): 3%</span>
+                            <span>Next Dividend: <span id="sp500-next-dividend">---</span></span>
+                            <span>Next Growth: <span id="sp500-next-growth">---</span></span>
+                        </div>
+
+                        <div class="flex gap-2 mt-3 items-end">
+                            <div class="flex-grow">
+                                <label for="invest-amount" class="bw-label">Invest:</label>
+                                <input type="number" id="invest-amount" class="bw-input" placeholder="Amount" min="0" step="0.01">
+                            </div>
+                            <button class="bw-button" onclick="investSP500()"><span class="btn-icon">📈</span> Invest</button>
+                        </div>
+                         <div class="flex gap-2 mt-1 items-end">
+                            <div class="flex-grow">
+                                 <label for="divest-amount" class="bw-label">Divest:</label>
+                                <input type="number" id="divest-amount" class="bw-input" placeholder="Amount" min="0" step="0.01">
+                            </div>
+                            <button class="bw-button" onclick="divestSP500()"><span class="btn-icon">📉</span> Divest</button>
+                        </div>
+                        <p id="investment-error-message" class="text-red-600 text-xs mt-2 text-center"></p>
+                    </div>
+
+                    <button class="bw-button mt-2 self-center" onclick="switchToBankView()"><span class="btn-icon">🏦</span> Back to Bank View</button>
+                 </div>
+            </div>
+
+            </div>
+    </div>
+
+    <script src="/js/alkicorp_banking_sim.js"></script>
+</body>
+</html>

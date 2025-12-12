@@ -1,0 +1,386 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-bank-state
+      author: codex
+      validCheckSum: 9:68ef7037a5e1c1ea0c95ce8a671e7989
+      changes:
+        - createTable:
+            tableName: bank_state
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: slot_id
+                  type: INT
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: liquid_cash
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invested_sp500
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sp500_price
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_day
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_dividend_day
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_growth_day
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_update_timestamp
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 2-create-client
+      author: codex
+      changes:
+        - createTable:
+            tableName: client
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT AUTO_INCREMENT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: bank_state_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: slot_id
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(80)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: checking_balance
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: daily_withdrawn
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_number
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_expiry
+                  type: VARCHAR(8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_cvv
+                  type: VARCHAR(4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: client
+            baseColumnNames: bank_state_id
+            constraintName: fk_client_bank_state
+            referencedTableName: bank_state
+            referencedColumnNames: id
+        - createIndex:
+            tableName: client
+            indexName: idx_client_slot
+            columns:
+              - column:
+                  name: slot_id
+  - changeSet:
+      id: 3-create-transaction
+      author: codex
+      changes:
+        - createTable:
+            tableName: client_transaction
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT AUTO_INCREMENT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: client_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_day
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: client_transaction
+            baseColumnNames: client_id
+            constraintName: fk_tx_client
+            referencedTableName: client
+            referencedColumnNames: id
+        - createIndex:
+            tableName: client_transaction
+            indexName: idx_tx_client
+            columns:
+              - column:
+                  name: client_id
+  - changeSet:
+      id: 4-create-investment-event
+      author: codex
+      changes:
+        - createTable:
+            tableName: investment_event
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT AUTO_INCREMENT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: slot_id
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: asset
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_day
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: investment_event
+            indexName: idx_investment_slot
+            columns:
+              - column:
+                  name: slot_id
+  - changeSet:
+      id: 5-seed-bank-state
+      author: codex
+      changes:
+        - insert:
+            tableName: bank_state
+            columns:
+              - column:
+                  name: slot_id
+                  valueNumeric: 1
+              - column:
+                  name: liquid_cash
+                  valueNumeric: 100000
+              - column:
+                  name: invested_sp500
+                  valueNumeric: 0
+              - column:
+                  name: sp500_price
+                  valueNumeric: 4500
+              - column:
+                  name: game_day
+                  valueNumeric: 0
+              - column:
+                  name: next_dividend_day
+                  valueNumeric: 11
+              - column:
+                  name: next_growth_day
+                  valueNumeric: 11
+              - column:
+                  name: last_update_timestamp
+                  valueComputed: CURRENT_TIMESTAMP
+        - insert:
+            tableName: bank_state
+            columns:
+              - column:
+                  name: slot_id
+                  valueNumeric: 2
+              - column:
+                  name: liquid_cash
+                  valueNumeric: 100000
+              - column:
+                  name: invested_sp500
+                  valueNumeric: 0
+              - column:
+                  name: sp500_price
+                  valueNumeric: 4500
+              - column:
+                  name: game_day
+                  valueNumeric: 0
+              - column:
+                  name: next_dividend_day
+                  valueNumeric: 11
+              - column:
+                  name: next_growth_day
+                  valueNumeric: 11
+              - column:
+                  name: last_update_timestamp
+                  valueComputed: CURRENT_TIMESTAMP
+        - insert:
+            tableName: bank_state
+            columns:
+              - column:
+                  name: slot_id
+                  valueNumeric: 3
+              - column:
+                  name: liquid_cash
+                  valueNumeric: 100000
+              - column:
+                  name: invested_sp500
+                  valueNumeric: 0
+              - column:
+                  name: sp500_price
+                  valueNumeric: 4500
+              - column:
+                  name: game_day
+                  valueNumeric: 0
+              - column:
+                  name: next_dividend_day
+                  valueNumeric: 11
+              - column:
+                  name: next_growth_day
+                  valueNumeric: 11
+              - column:
+                  name: last_update_timestamp
+                  valueComputed: CURRENT_TIMESTAMP
+  - changeSet:
+      id: 6-fix-bank-state-id-auto-increment
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: bank_state
+          - columnExists:
+              tableName: bank_state
+              columnName: id
+      changes:
+        - addAutoIncrement:
+            tableName: bank_state
+            columnName: id
+            columnDataType: BIGINT
+  - changeSet:
+      id: 7-fix-client-id-auto-increment
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: client
+          - columnExists:
+              tableName: client
+              columnName: id
+      changes:
+        - addAutoIncrement:
+            tableName: client
+            columnName: id
+            columnDataType: BIGINT
+  - changeSet:
+      id: 8-fix-client-transaction-id-auto-increment
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: client_transaction
+          - columnExists:
+              tableName: client_transaction
+              columnName: id
+      changes:
+        - addAutoIncrement:
+            tableName: client_transaction
+            columnName: id
+            columnDataType: BIGINT
+  - changeSet:
+      id: 9-fix-investment-event-id-auto-increment
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: investment_event
+          - columnExists:
+              tableName: investment_event
+              columnName: id
+          - sqlCheck:
+              expectedResult: 0
+              sql: >
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'INVESTMENT_EVENT'
+                  AND COLUMN_NAME = 'ID'
+                  AND IS_IDENTITY = 'YES'
+      changes:
+        - addAutoIncrement:
+            tableName: investment_event
+            columnName: id
+            columnDataType: BIGINT
