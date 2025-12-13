@@ -733,3 +733,6 @@ insert into investment_event (amount,asset,created_at,game_day,slot_id,type,id) 
 2025-12-13 00:03:25.805170-05:00 jdbc[3]: exception
 org.h2.jdbc.JdbcSQLDataException: Value too long for column "AMOUNT DECIMAL(19, 2)": "101790518840600087.43 (20)"; SQL statement:
 insert into investment_event (amount,asset,created_at,game_day,slot_id,type,id) values (?,?,?,?,?,?,default) [22001-240]
+2025-12-13 00:15:04.227627-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "AMOUNT DECIMAL(19, 2)": "101790518840600087.43 (20)"; SQL statement:
+insert into investment_event (amount,asset,created_at,game_day,slot_id,type,id) values (?,?,?,?,?,?,default) [22001-240]

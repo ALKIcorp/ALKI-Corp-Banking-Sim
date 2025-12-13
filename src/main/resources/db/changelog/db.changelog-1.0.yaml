@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 1-create-bank-state
-      author: codex
+      author: alkicorp
       validCheckSum: 9:68ef7037a5e1c1ea0c95ce8a671e7989
       changes:
         - createTable:
@@ -57,7 +57,7 @@ databaseChangeLog:
                     nullable: false
   - changeSet:
       id: 2-create-client
-      author: codex
+      author: alkicorp
       changes:
         - createTable:
             tableName: client
@@ -127,7 +127,7 @@ databaseChangeLog:
                   name: slot_id
   - changeSet:
       id: 3-create-transaction
-      author: codex
+      author: alkicorp
       changes:
         - createTable:
             tableName: client_transaction
@@ -177,7 +177,7 @@ databaseChangeLog:
                   name: client_id
   - changeSet:
       id: 4-create-investment-event
-      author: codex
+      author: alkicorp
       changes:
         - createTable:
             tableName: investment_event
@@ -226,7 +226,7 @@ databaseChangeLog:
                   name: slot_id
   - changeSet:
       id: 5-seed-bank-state
-      author: codex
+      author: alkicorp
       changes:
         - insert:
             tableName: bank_state
@@ -311,7 +311,7 @@ databaseChangeLog:
                   valueComputed: CURRENT_TIMESTAMP
   - changeSet:
       id: 6-fix-bank-state-id-auto-increment
-      author: codex
+      author: alkicorp
       preConditions:
         onFail: MARK_RAN
         onError: HALT
@@ -326,9 +326,12 @@ databaseChangeLog:
             tableName: bank_state
             columnName: id
             columnDataType: BIGINT
+        - sql:
+            sql: ALTER TABLE bank_state ALTER COLUMN id RESTART WITH 4
+            dbms: h2
   - changeSet:
       id: 7-fix-client-id-auto-increment
-      author: codex
+      author: alkicorp
       preConditions:
         onFail: MARK_RAN
         onError: HALT
@@ -345,7 +348,7 @@ databaseChangeLog:
             columnDataType: BIGINT
   - changeSet:
       id: 8-fix-client-transaction-id-auto-increment
-      author: codex
+      author: alkicorp
       preConditions:
         onFail: MARK_RAN
         onError: HALT
@@ -362,7 +365,7 @@ databaseChangeLog:
             columnDataType: BIGINT
   - changeSet:
       id: 9-fix-investment-event-id-auto-increment
-      author: codex
+      author: alkicorp
       preConditions:
         onFail: MARK_RAN
         onError: HALT

@@ -20,6 +20,20 @@ H2 Console (database): http://localhost:8080/h2-console
 Additional commands
 Run tests: ./gradlew test
 
+Component Health Check: Run the comprehensive component health check test suite to verify all services are working:
+   ./gradlew test --tests ComponentHealthCheckTest --no-daemon
+
+This test suite validates Liquibase/Database, SimulationService, BankService, ClientService, InvestmentService, ChartService, and integration workflows. It displays formatted console output with pass/fail indicators and a summary report.
+
+**Liquibase Verification**: The test provides detailed Liquibase status reporting:
+- Verifies database connection and displays connection details (database type, URL)
+- Confirms Liquibase changelog table (`DATABASECHANGELOG`) exists
+- Lists all applied changesets with details (ID, author, filename, execution type)
+- Verifies all required database tables exist (`BANK_STATE`, `CLIENT`, `CLIENT_TRANSACTION`, `INVESTMENT_EVENT`)
+- Tests database operations to ensure everything is working correctly
+
+The test also includes debug logging (prefixed with `[DEBUG]`) that shows the execution flow, including when `resetSlot()` is called, whether existing BankState records are found, and the state of entities before and after save operations.
+
 Stop the server: Use Ctrl+C in the terminal, or find the process and kill it:
   lsof -iTCP:8080 -sTCP:LISTEN  # Find the process  kill <pid>                     # Kill it
 
@@ -65,9 +79,12 @@ Stop the server: Use Ctrl+C in the terminal, or find the process and kill it:
   5. Seed initial `bank_state` rows for slots 1–3.
   6. Patch `bank_state.id` auto-increment (preconditioned).
   7. Patch `client.id` auto-increment (preconditioned) — fixes the `NULL not allowed for column "ID"` insertion error.
+  8. Patch `client_transaction.id` auto-increment (preconditioned).
+  9. Patch `investment_event.id` auto-increment (preconditioned).
 - How it runs: Because `spring-boot-starter-liquibase` is on the classpath, Spring Boot auto-configures `SpringLiquibase` at startup. On application boot, Liquibase locks the DB, applies pending change sets, and logs to `PUBLIC.DATABASECHANGELOG`. No explicit code calls are required; configuration is implicit via the starter.
 - DB location: H2 file at `./data/banking-sim.mv.db`. Only one process can hold the file lock at a time.
 - Resetting DB (dev): stop the app, delete `./data/banking-sim*`, restart to re-run migrations and reseed.
+- **Verifying Liquibase status**: Run `./gradlew test --tests ComponentHealthCheckTest.testLiquibaseAndDatabase --no-daemon` to see detailed Liquibase verification including connection status, applied changesets, and table existence checks.
 
 ## Dependencies (why they exist)
 - `spring-boot-starter-web`: REST controllers and embedded Tomcat.
