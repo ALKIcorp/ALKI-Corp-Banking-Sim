@@ -3,6 +3,12 @@ databaseChangeLog:
       id: 1-create-bank-state
       author: alkicorp
       validCheckSum: 9:68ef7037a5e1c1ea0c95ce8a671e7989
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: bank_state
       changes:
         - createTable:
             tableName: bank_state
@@ -58,6 +64,12 @@ databaseChangeLog:
   - changeSet:
       id: 2-create-client
       author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: client
       changes:
         - createTable:
             tableName: client
@@ -128,6 +140,12 @@ databaseChangeLog:
   - changeSet:
       id: 3-create-transaction
       author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: client_transaction
       changes:
         - createTable:
             tableName: client_transaction
@@ -178,6 +196,12 @@ databaseChangeLog:
   - changeSet:
       id: 4-create-investment-event
       author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: investment_event
       changes:
         - createTable:
             tableName: investment_event

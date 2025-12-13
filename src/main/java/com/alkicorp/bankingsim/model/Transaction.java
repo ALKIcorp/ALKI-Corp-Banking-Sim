@@ -17,7 +17,6 @@ import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.GenericGenerator;
 
 @Getter
 @Setter
@@ -27,8 +26,7 @@ import org.hibernate.annotations.GenericGenerator;
 public class Transaction {
 
     @Id
-    @GenericGenerator(name = "tx-id-generator", strategy = "increment")
-    @GeneratedValue(generator = "tx-id-generator", strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

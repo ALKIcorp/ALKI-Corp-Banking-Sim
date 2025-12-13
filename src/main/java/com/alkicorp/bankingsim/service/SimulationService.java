@@ -16,7 +16,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -139,7 +141,10 @@ public class SimulationService {
         state.setLastUpdateTimestamp(now);
 
         if (currentWholeDay > previousWholeDay) {
-            List<Client> clients = clientRepository.findBySlotId(state.getSlotId());
+            List<Client> clients = Objects.requireNonNull(
+                    Optional.ofNullable(clientRepository.findBySlotId(state.getSlotId()))
+                            .orElse(Collections.emptyList()),
+                    "Clients list cannot be null");
             boolean clientUpdated = false;
             for (int day = previousWholeDay + 1; day <= currentWholeDay; day++) {
                 if ((day + 1) % SimulationConstants.DAYS_PER_YEAR == 0) {

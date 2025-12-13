@@ -1,7 +1,6 @@
 package com.alkicorp.bankingsim.service;
 
 import com.alkicorp.bankingsim.model.BankState;
-import com.alkicorp.bankingsim.repository.BankStateRepository;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.web.dto.BankStateResponse;
 import com.alkicorp.bankingsim.web.dto.SlotSummaryResponse;
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class BankService {
 
     private final SimulationService simulationService;
-    private final BankStateRepository bankStateRepository;
     private final ClientRepository clientRepository;
 
     @Transactional(readOnly = true)

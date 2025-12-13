@@ -20,6 +20,9 @@ H2 Console (database): http://localhost:8080/h2-console
 Additional commands
 Run tests: ./gradlew test
 
+Refresh Gradle dependencies: If your IDE shows a notification that the build file has changed, reload the Gradle project or run:
+   ./gradlew --refresh-dependencies
+
 Component Health Check: Run the comprehensive component health check test suite to verify all services are working:
    ./gradlew test --tests ComponentHealthCheckTest --no-daemon
 
@@ -34,15 +37,22 @@ This test suite validates Liquibase/Database, SimulationService, BankService, Cl
 
 The test also includes debug logging (prefixed with `[DEBUG]`) that shows the execution flow, including when `resetSlot()` is called, whether existing BankState records are found, and the state of entities before and after save operations.
 
-Stop the server: Use Ctrl+C in the terminal, or find the process and kill it:
-  lsof -iTCP:8080 -sTCP:LISTEN  # Find the process  kill <pid>                     # Kill it
+Stop the server: Use Ctrl+C in the terminal, or kill the process on port 8080:
+  lsof -tiTCP:8080 -sTCP:LISTEN | xargs kill
+
+**If the application won't start** (database locked error):
+  The H2 database file may be locked by another process. Try:
+  1. Kill any process on port 8080: 
+  lsof -tiTCP:8080 -sTCP:LISTEN | xargs kill
+  2. Find and kill Java processes holding the database: lsof | grep banking-sim.mv.db | awk '{print $2}' | xargs kill
+  3. If still locked, you may need to manually delete the lock file or restart your computer
 
 
 
 ### Run with: http://localhost:8080/banking/alkicorp_banking_sim.html
 ## Overview
 - Purpose: REST API that drives the Alkicorp banking simulator. It models bank “slots” (independent simulation timelines), clients and their checking accounts, transactions, and simple S&P 500 investment actions.
-- Runtime stack: Java 17, Spring Boot 4.0, H2 file database (`./data/banking-sim`), Liquibase for schema management, JPA/Hibernate for persistence.
+- Runtime stack: Java 17, Spring Boot 3.3.13, H2 file database (`./data/banking-sim`), Liquibase for schema management, JPA/Hibernate for persistence.
 - Default port: `8080`. Base path for the API is `/api`.
 
 ## High-level architecture
@@ -81,7 +91,7 @@ Stop the server: Use Ctrl+C in the terminal, or find the process and kill it:
   7. Patch `client.id` auto-increment (preconditioned) — fixes the `NULL not allowed for column "ID"` insertion error.
   8. Patch `client_transaction.id` auto-increment (preconditioned).
   9. Patch `investment_event.id` auto-increment (preconditioned).
-- How it runs: Because `spring-boot-starter-liquibase` is on the classpath, Spring Boot auto-configures `SpringLiquibase` at startup. On application boot, Liquibase locks the DB, applies pending change sets, and logs to `PUBLIC.DATABASECHANGELOG`. No explicit code calls are required; configuration is implicit via the starter.
+- How it runs: Because `org.liquibase:liquibase-core` is on the classpath, Spring Boot auto-configures `SpringLiquibase` at startup. On application boot, Liquibase locks the DB, applies pending change sets, and logs to `PUBLIC.DATABASECHANGELOG`. No explicit code calls are required; configuration is implicit via the dependency.
 - DB location: H2 file at `./data/banking-sim.mv.db`. Only one process can hold the file lock at a time.
 - Resetting DB (dev): stop the app, delete `./data/banking-sim*`, restart to re-run migrations and reseed.
 - **Verifying Liquibase status**: Run `./gradlew test --tests ComponentHealthCheckTest.testLiquibaseAndDatabase --no-daemon` to see detailed Liquibase verification including connection status, applied changesets, and table existence checks.
@@ -89,33 +99,59 @@ Stop the server: Use Ctrl+C in the terminal, or find the process and kill it:
 ## Dependencies (why they exist)
 - `spring-boot-starter-web`: REST controllers and embedded Tomcat.
 - `spring-boot-starter-data-jpa`: JPA/Hibernate repositories and transaction management.
-- `spring-boot-starter-liquibase`: migration runner at startup.
+- `org.liquibase:liquibase-core`: migration runner at startup (auto-configured by Spring Boot).
 - `spring-boot-starter-validation`: Jakarta Bean Validation for request DTOs.
 - `spring-boot-starter`: core Spring Boot autoconfiguration, logging.
 - `spring-boot-starter-jdbc`: brought transitively for datasource support.
 - `H2` (`com.h2database:h2`): lightweight embedded/file database for local dev.
-- `Lombok`: reduces boilerplate (getters/setters/builders); annotation processor configured.
+- `Lombok` (`org.projectlombok:lombok`): reduces boilerplate (getters/setters/builders); annotation processor configured.
 - `spring-boot-devtools` (devOnly): hot reload in IDE/local runs.
 - Test deps: `spring-boot-starter-test`, JUnit Platform launcher.
+- Dependency management: Uses `io.spring.dependency-management` plugin which automatically imports Spring Boot's BOM to manage all dependency versions consistently.
 
 ## Runtime instructions for developers
-1. Prereqs: Java 17 available on PATH. No need to install Gradle; wrapper is included.
-2. Start API locally:
+1. **Prerequisites**: 
+   - Java 17 available on PATH (verify with `java -version`)
+   - No need to install Gradle; wrapper is included (`./gradlew` or `gradlew.bat` on Windows)
+   - Spring Boot 3.3.13 with dependency management via BOM
+
+2. **Build the application**:
+   - `./gradlew clean build -x test` (builds without running tests)
+   - `./gradlew build` (builds and runs all tests)
+   - The build uses Java 17 toolchain and Spring Boot 3.3.13
+
+3. **Start API locally**:
    - `./gradlew bootRun -x test --no-daemon`
-   - API served on `http://localhost:8080`.
-3. Stop the server: `kill <pid>` (find with `lsof -iTCP:8080 -sTCP:LISTEN`).
-4. Run tests: `./gradlew test`.
-5. Sample calls (slot 1):
-   - List slots: `GET /api/slots`
-   - Start/reset slot: `POST /api/slots/1/start`
-   - Get bank state: `GET /api/slots/1/bank`
-   - Create client: `POST /api/slots/1/clients` with `{"name":"Alice"}`
-   - Deposit: `POST /api/slots/1/clients/{clientId}/deposit` with `{"amount":100}`
-   - Withdraw: `POST /api/slots/1/clients/{clientId}/withdraw` with `{"amount":50}`
-   - Investment state: `GET /api/slots/1/investments/sp500`
-   - Invest: `POST /api/slots/1/investments/sp500/invest` with `{"amount":500}`
-   - Charts: `GET /api/slots/1/charts/clients` and `/api/slots/1/charts/activity`
-6. DB inspection (when app stopped): `java -cp ~/.gradle/caches/modules-2/files-2.1/com.h2database/h2/2.4.240/.../h2-2.4.240.jar org.h2.tools.Shell -url jdbc:h2:file:./data/banking-sim -user SA`.
+   - Or on Windows: `gradlew.bat bootRun -x test --no-daemon`
+   - API served on `http://localhost:8080`
+   - Server will start and automatically run Liquibase migrations on first startup
+
+4. **Stop the server**: 
+   - Use `Ctrl+C` in the terminal where it's running
+   - Or: `lsof -tiTCP:8080 -sTCP:LISTEN | xargs kill` (macOS/Linux)
+   - Or: `netstat -ano | findstr :8080` then `taskkill /PID <pid> /F` (Windows)
+
+5. **Run tests**: 
+   - `./gradlew test` (all tests)
+   - `./gradlew test --tests ComponentHealthCheckTest` (specific test suite)
+
+6. **Sample API calls** (slot 1):
+   - List slots: `GET http://localhost:8080/api/slots`
+   - Start/reset slot: `POST http://localhost:8080/api/slots/1/start`
+   - Get bank state: `GET http://localhost:8080/api/slots/1/bank`
+   - Create client: `POST http://localhost:8080/api/slots/1/clients` with body `{"name":"Alice"}`
+   - Deposit: `POST http://localhost:8080/api/slots/1/clients/{clientId}/deposit` with body `{"amount":100}`
+   - Withdraw: `POST http://localhost:8080/api/slots/1/clients/{clientId}/withdraw` with body `{"amount":50}`
+   - Investment state: `GET http://localhost:8080/api/slots/1/investments/sp500`
+   - Invest: `POST http://localhost:8080/api/slots/1/investments/sp500/invest` with body `{"amount":500}`
+   - Charts: `GET http://localhost:8080/api/slots/1/charts/clients` and `GET http://localhost:8080/api/slots/1/charts/activity`
+
+7. **Database inspection** (when app is stopped):
+   - Use H2 Console: `http://localhost:8080/h2-console` (when app is running)
+   - JDBC URL: `jdbc:h2:file:./data/banking-sim`
+   - Username: `sa`
+   - Password: (empty)
+   - Or use H2 Shell: `java -cp <path-to-h2-jar> org.h2.tools.Shell -url jdbc:h2:file:./data/banking-sim -user sa`
 
 ## What’s finalized vs. placeholder
 - Finalized behaviors:
@@ -133,6 +169,11 @@ Stop the server: Use Ctrl+C in the terminal, or find the process and kill it:
 - Browser console `content_script.js ... control` errors: from a browser extension, not this API. Safe to ignore when testing the backend.
 - 404 after client creation attempt: typically the UI surfacing a failed fetch; the root cause was a 500 from missing auto-increment on `client.id`, now fixed by change set `7-fix-client-id-auto-increment`.
 - H2 “Database may be already in use” error: occurs if multiple app instances or external tools hold the DB lock. Stop other processes or remove the DB file after stopping the app.
+- **Application appears to do nothing when starting**: This is usually caused by a database lock error. Check the console output for "file is locked" errors. Solutions:
+  1. Kill any process on port 8080: `lsof -tiTCP:8080 -sTCP:LISTEN | xargs kill`
+  2. Find and kill Java processes holding the database: `lsof | grep banking-sim.mv.db | awk '{print $2}' | xargs kill -9`
+  3. Find all Java processes and kill them: `jps -l | grep bankingsim | awk '{print $1}' | xargs kill -9`
+  4. As a last resort, stop the app, delete `./data/banking-sim*` files, and restart (this will reset the database).
 - If migrations get out of sync after manual DB edits, reset the DB (delete `./data/banking-sim*`) and restart to replay Liquibase change sets.
 
 ## How the program runs (request flow)
