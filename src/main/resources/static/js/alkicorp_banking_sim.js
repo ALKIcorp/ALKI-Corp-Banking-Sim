@@ -489,11 +489,24 @@ function startPolling() {
     }, POLL_INTERVAL_MS);
 }
 
+function handleResize() {
+    // Resize charts when window is resized
+    if (clientMoneyChart) {
+        clientMoneyChart.resize();
+    }
+    if (activityChart) {
+        activityChart.resize();
+    }
+}
+
 function initializeApp() {
     initializeCharts();
     quitButton.addEventListener('click', quitGame);
     updateHomeScreen();
     startPolling();
+    
+    // Add resize handler for dynamic resizing
+    window.addEventListener('resize', handleResize);
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);

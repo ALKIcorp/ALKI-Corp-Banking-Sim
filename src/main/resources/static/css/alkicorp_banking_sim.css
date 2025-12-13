@@ -23,37 +23,48 @@
             --input-text: var(--color-text-dark);
         }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
-            background-color: var(--color-background);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--color-screen-bg);
             font-family: var(--font-primary);
             color: var(--color-text-light);
-            font-size: 10px; /* Smaller base font size for retro feel */
+            font-size: clamp(8px, 1.2vw, 12px); /* Responsive base font size */
             line-height: 1.6;
         }
 
-        /* --- Aspect Ratio Container (4:3) --- */
+        /* --- Fullscreen Container --- */
         .aspect-ratio-container {
-            position: relative;
-            width: 95vmin; /* Use viewport width */
-            max-width: 800px; /* Max width */
-            min-width: 320px; /* Min width */
-            background-color: #000; /* Black outer frame */
-            border: 10px solid #333; /* Dark gray border */
-             box-shadow:
-                inset 0 0 0 3px #555, /* Inner bevel */
-                0 0 20px 10px rgba(0,0,0,0.6); /* Outer shadow */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            min-width: 100vw;
+            min-height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            background-color: var(--color-screen-bg);
+            border: none;
+            box-shadow: none;
             overflow: hidden;
-            border-radius: 8px; /* Slightly rounded outer corners */
-        }
-
-        .aspect-ratio-container::before {
-            content: "";
-            display: block;
-            padding-top: 75%; /* 3 / 4 = 0.75 -> 75% for 4:3 ratio */
+            border-radius: 0;
+            z-index: 1;
         }
 
         /* --- Game Screen --- */
@@ -63,15 +74,16 @@
             left: 0;
             right: 0;
             bottom: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             padding: 10px; /* Padding inside the screen */
             background-color: var(--color-screen-bg);
             overflow-y: auto; /* Allow scrolling if content overflows */
-            border: 5px solid var(--color-border-light);
-            border-top-color: var(--color-border-dark);
-            border-left-color: var(--color-border-dark);
-            border-radius: 3px; /* Inner screen slight rounding */
+            border: none; /* No border for fullscreen */
+            border-radius: 0;
+            box-sizing: border-box;
         }
         /* Custom scrollbar for game screen */
         .game-screen::-webkit-scrollbar { width: 8px; }
@@ -293,7 +305,7 @@
         /* Chart container & Tooltip Fix */
         .chart-container {
             position: relative;
-            height: 160px; /* Slightly taller */
+            height: clamp(120px, 20vh, 250px); /* Responsive height */
             width: 100%;
             margin-bottom: 5px; /* Reduced margin */
             padding: 5px; /* Add padding INSIDE container */
@@ -328,7 +340,7 @@
             text-transform: uppercase;
         }
         .log-area {
-            height: 80px; /* Fixed height */
+            height: clamp(60px, 10vh, 120px); /* Responsive height */
             overflow-y: auto;
             background-color: rgba(0,0,0,0.2);
             border: 1px solid var(--color-panel-border);
