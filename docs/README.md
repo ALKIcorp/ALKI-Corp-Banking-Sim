@@ -96,6 +96,14 @@ Stop the server: Use Ctrl+C in the terminal, or kill the process on port 8080:
 - Resetting DB (dev): stop the app, delete `./data/banking-sim*`, restart to re-run migrations and reseed.
 - **Verifying Liquibase status**: Run `./gradlew test --tests ComponentHealthCheckTest.testLiquibaseAndDatabase --no-daemon` to see detailed Liquibase verification including connection status, applied changesets, and table existence checks.
 
+## Build configuration
+- **Build tool**: Gradle (wrapper included)
+- **Java version**: 17 (configured via toolchain)
+- **Spring Boot version**: 3.3.13
+- **Dependency management plugin**: `io.spring.dependency-management` version 1.1.7
+- **Project version**: 0.0.1-SNAPSHOT
+- **Group**: com.alkicorp
+
 ## Dependencies (why they exist)
 - `spring-boot-starter-web`: REST controllers and embedded Tomcat.
 - `spring-boot-starter-data-jpa`: JPA/Hibernate repositories and transaction management.
@@ -107,13 +115,13 @@ Stop the server: Use Ctrl+C in the terminal, or kill the process on port 8080:
 - `Lombok` (`org.projectlombok:lombok`): reduces boilerplate (getters/setters/builders); annotation processor configured.
 - `spring-boot-devtools` (devOnly): hot reload in IDE/local runs.
 - Test deps: `spring-boot-starter-test`, JUnit Platform launcher.
-- Dependency management: Uses `io.spring.dependency-management` plugin which automatically imports Spring Boot's BOM to manage all dependency versions consistently.
+- **Dependency management**: The `io.spring.dependency-management` plugin (version 1.1.7) automatically imports Spring Boot's BOM (`spring-boot-dependencies:3.3.13`) to manage all dependency versions consistently. This means you don't need to specify versions for Spring Boot dependencies.
 
 ## Runtime instructions for developers
 1. **Prerequisites**: 
    - Java 17 available on PATH (verify with `java -version`)
    - No need to install Gradle; wrapper is included (`./gradlew` or `gradlew.bat` on Windows)
-   - Spring Boot 3.3.13 with dependency management via BOM
+   - Spring Boot 3.3.13 with dependency management via `io.spring.dependency-management` plugin (1.1.7)
 
 2. **Build the application**:
    - `./gradlew clean build -x test` (builds without running tests)
