@@ -44,7 +44,10 @@ Stop the server: Use Ctrl+C in the terminal, or kill the process on port 8080:
   The H2 database file may be locked by another process. Try:
   1. Kill any process on port 8080: 
   lsof -tiTCP:8080 -sTCP:LISTEN | xargs kill
-  2. Find and kill Java processes holding the database: lsof | grep banking-sim.mv.db | awk '{print $2}' | xargs kill
+
+  2. Find and kill Java processes holding the database: 
+  lsof | grep banking-sim.mv.db | awk '{print $2}' | xargs kill
+  
   3. If still locked, you may need to manually delete the lock file or restart your computer
 
 
@@ -91,6 +94,11 @@ Stop the server: Use Ctrl+C in the terminal, or kill the process on port 8080:
   7. Patch `client.id` auto-increment (preconditioned) — fixes the `NULL not allowed for column "ID"` insertion error.
   8. Patch `client_transaction.id` auto-increment (preconditioned).
   9. Patch `investment_event.id` auto-increment (preconditioned).
+  10. **Seed slot 1 data** (`10-seed-slot-1-data`): Automatically loads seed data for slot 1 if no clients exist. This changeset runs on every application startup and checks if slot 1 has any clients. If no clients are found, it:
+     - Updates the `bank_state` for slot 1 with predefined values (liquid cash: 250,000, invested SP500: 50,000, game day: 12, etc.)
+     - Inserts 5 pre-configured clients with their card details and balances
+     - Inserts 14 historical transactions linked to those clients
+     - **Auto-regeneration**: If slot 1 data is deleted, the seed data will automatically regenerate on the next application startup
 - How it runs: Because `org.liquibase:liquibase-core` is on the classpath, Spring Boot auto-configures `SpringLiquibase` at startup. On application boot, Liquibase locks the DB, applies pending change sets, and logs to `PUBLIC.DATABASECHANGELOG`. No explicit code calls are required; configuration is implicit via the dependency.
 - DB location: H2 file at `./data/banking-sim.mv.db`. Only one process can hold the file lock at a time.
 - Resetting DB (dev): stop the app, delete `./data/banking-sim*`, restart to re-run migrations and reseed.
@@ -167,6 +175,7 @@ Stop the server: Use Ctrl+C in the terminal, or kill the process on port 8080:
   - SP500 invest/divest mechanics and chart aggregation endpoints.
   - Liquibase-managed schema, including recent auto-increment fixes for `bank_state.id` and `client.id`.
   - Seed data for bank_state slots 1–3 (intended starting balances).
+  - **Automatic seed data for slot 1**: Slot 1 automatically loads with 5 pre-configured clients and their transaction history when no clients exist. The seed data includes realistic bank state (250K liquid cash, 50K invested), client balances, and 14 historical transactions. If slot 1 data is removed, it will automatically regenerate on the next application startup.
 - Placeholder / assumptions:
   - Slots are hardcoded to IDs 1–3 in `SlotController`; expanding slots will need code + data changes.
   - Simulation constants are fixed in `SimulationConstants`; adjust as needed for gameplay tuning.

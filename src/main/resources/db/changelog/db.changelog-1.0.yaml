@@ -411,3 +411,169 @@ databaseChangeLog:
             tableName: investment_event
             columnName: id
             columnDataType: BIGINT
+  - changeSet:
+      id: 10-seed-slot-1-data-v2
+      author: alkicorp
+      runAlways: true
+      changes:
+        # Update bank_state for slot 1 with seed data
+        - sql:
+            sql: >
+              UPDATE bank_state
+              SET liquid_cash = 250000.00,
+                  invested_sp500 = 50000.00,
+                  sp500_price = 4750.00,
+                  game_day = 12.0,
+                  next_dividend_day = 21,
+                  next_growth_day = 18,
+                  last_update_timestamp = PARSEDATETIME('2024-01-13 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              WHERE slot_id = 1
+        # Delete existing data for slot 1 (if any)
+        - sql:
+            sql: >
+              DELETE FROM client_transaction 
+              WHERE client_id IN (SELECT id FROM client WHERE slot_id = 1)
+        - sql:
+            sql: >
+              DELETE FROM client WHERE slot_id = 1
+        # Insert clients for slot 1
+        - sql:
+            sql: >
+              INSERT INTO client (bank_state_id, slot_id, name, checking_balance, daily_withdrawn, card_number, card_expiry, card_cvv, created_at)
+              SELECT 
+                (SELECT id FROM bank_state WHERE slot_id = 1),
+                1,
+                'Starboy The Ponderer',
+                12800.00,
+                200.00,
+                '4532 2047 1100 9001',
+                '10/27',
+                '247',
+                PARSEDATETIME('2024-01-01 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+        - sql:
+            sql: >
+              INSERT INTO client (bank_state_id, slot_id, name, checking_balance, daily_withdrawn, card_number, card_expiry, card_cvv, created_at)
+              SELECT 
+                (SELECT id FROM bank_state WHERE slot_id = 1),
+                1,
+                'Maison Alkibiades',
+                34250.00,
+                0.00,
+                '5555 2047 2200 9002',
+                '03/28',
+                '318',
+                PARSEDATETIME('2024-01-02 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+        - sql:
+            sql: >
+              INSERT INTO client (bank_state_id, slot_id, name, checking_balance, daily_withdrawn, card_number, card_expiry, card_cvv, created_at)
+              SELECT 
+                (SELECT id FROM bank_state WHERE slot_id = 1),
+                1,
+                'Mason Bramadat',
+                5150.00,
+                50.00,
+                '4532 2047 3300 9003',
+                '07/26',
+                '909',
+                PARSEDATETIME('2024-01-03 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+        - sql:
+            sql: >
+              INSERT INTO client (bank_state_id, slot_id, name, checking_balance, daily_withdrawn, card_number, card_expiry, card_cvv, created_at)
+              SELECT 
+                (SELECT id FROM bank_state WHERE slot_id = 1),
+                1,
+                'Hal Gibert',
+                60200.00,
+                0.00,
+                '5555 2047 4400 9004',
+                '12/29',
+                '612',
+                PARSEDATETIME('2024-01-04 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+        - sql:
+            sql: >
+              INSERT INTO client (bank_state_id, slot_id, name, checking_balance, daily_withdrawn, card_number, card_expiry, card_cvv, created_at)
+              SELECT 
+                (SELECT id FROM bank_state WHERE slot_id = 1),
+                1,
+                'Rosemont Runner',
+                2750.00,
+                120.00,
+                '4532 2047 5500 9005',
+                '01/28',
+                '505',
+                PARSEDATETIME('2024-01-05 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+        # Insert transactions for Starboy The Ponderer
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'DEPOSIT', 15000.00, 0, PARSEDATETIME('2024-01-01 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Starboy The Ponderer'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 2000.00, 7, PARSEDATETIME('2024-01-08 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Starboy The Ponderer'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 200.00, 12, PARSEDATETIME('2024-01-13 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Starboy The Ponderer'
+        # Insert transactions for Maison Alkibiades
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'DEPOSIT', 50000.00, 1, PARSEDATETIME('2024-01-02 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Maison Alkibiades'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 7500.00, 5, PARSEDATETIME('2024-01-06 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Maison Alkibiades'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 8250.00, 9, PARSEDATETIME('2024-01-10 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Maison Alkibiades'
+        # Insert transactions for Mason Bramadat
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'DEPOSIT', 6200.00, 2, PARSEDATETIME('2024-01-03 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Mason Bramadat'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 1000.00, 6, PARSEDATETIME('2024-01-07 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Mason Bramadat'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 50.00, 12, PARSEDATETIME('2024-01-13 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Mason Bramadat'
+        # Insert transactions for Hal Gibert
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'DEPOSIT', 75000.00, 3, PARSEDATETIME('2024-01-04 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Hal Gibert'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 14800.00, 8, PARSEDATETIME('2024-01-09 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Hal Gibert'
+        # Insert transactions for Rosemont Runner
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'DEPOSIT', 3200.00, 4, PARSEDATETIME('2024-01-05 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Rosemont Runner'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 330.00, 10, PARSEDATETIME('2024-01-11 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Rosemont Runner'
+        - sql:
+            sql: >
+              INSERT INTO client_transaction (client_id, type, amount, game_day, created_at)
+              SELECT id, 'WITHDRAWAL', 120.00, 12, PARSEDATETIME('2024-01-13 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+              FROM client WHERE slot_id = 1 AND name = 'Rosemont Runner'

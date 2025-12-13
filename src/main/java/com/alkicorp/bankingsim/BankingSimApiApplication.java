@@ -4,8 +4,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 
 @SpringBootApplication
 public class BankingSimApiApplication {
@@ -30,16 +28,9 @@ public class BankingSimApiApplication {
 
     public static void main(String[] args) {
         // #region agent log
-        logDebug("debug-session", "run1", "A", "BankingSimApiApplication.main", "Application starting", "{\"args\":\"" + (args.length > 0 ? String.join(",", args) : "none") + "\"}");
+        logDebug("debug-session", "run1", "H1,H2,H3,H4,H5", "BankingSimApiApplication.main", "Application starting", "{\"args\":\"" + (args.length > 0 ? String.join(",", args) : "none") + "\"}");
         // #endregion agent log
         
         SpringApplication.run(BankingSimApiApplication.class, args);
-    }
-
-    @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationReady() {
-        // #region agent log
-        logDebug("debug-session", "run1", "A", "BankingSimApiApplication.onApplicationReady", "Application ready - server should be running", "{\"port\":8080,\"status\":\"ready\"}");
-        // #endregion agent log
     }
 }

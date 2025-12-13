@@ -41,15 +41,26 @@ public class SimulationService {
         // #region agent log
         System.out.println("  → Resetting slot " + slotId + " (clearing existing data and preparing fresh state)");
         try (FileWriter fw = new FileWriter("/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log", true)) {
-            fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H1,H2,H3\",\"location\":\"SimulationService.resetSlot:36\",\"message\":\"resetSlot entry\",\"data\":{\"slotId\":\"" + slotId + "\"},\"timestamp\":" + System.currentTimeMillis() + "}\n");
+            fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:40\",\"message\":\"resetSlot called - WILL DELETE SEED DATA\",\"data\":{\"slotId\":" + slotId + "},\"timestamp\":" + System.currentTimeMillis() + "}\n");
         } catch (IOException e) {}
         // #endregion
         List<Client> clients = clientRepository.findBySlotId(slotId);
+        // #region agent log
+        try (FileWriter fw = new FileWriter("/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log", true)) {
+            fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:47\",\"message\":\"Clients found before deletion\",\"data\":{\"slotId\":" + slotId + ",\"clientCount\":" + clients.size() + "},\"timestamp\":" + System.currentTimeMillis() + "}\n");
+        } catch (IOException e) {}
+        // #endregion
         if (!clients.isEmpty()) {
             transactionRepository.deleteByClientIn(clients);
         }
         clientRepository.deleteBySlotId(slotId);
         investmentEventRepository.deleteBySlotId(slotId);
+        // #region agent log
+        try (FileWriter fw = new FileWriter("/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log", true)) {
+            int afterDeleteCount = clientRepository.findBySlotId(slotId).size();
+            fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:52\",\"message\":\"Clients after deletion\",\"data\":{\"slotId\":" + slotId + ",\"clientCount\":" + afterDeleteCount + "},\"timestamp\":" + System.currentTimeMillis() + "}\n");
+        } catch (IOException e) {}
+        // #endregion
 
         // #region agent log
         System.out.println("  → Checking if slot " + slotId + " already exists in database...");
