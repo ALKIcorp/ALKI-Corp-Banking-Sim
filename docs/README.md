@@ -1,5 +1,30 @@
 # Banking Sim API – Developer Guide
 
+Quick start
+
+Prerequisites: Java 17 (verify with java -version)
+
+Run the application:
+   ./gradlew bootRun -x test --no-daemon
+
+Or if on Windows:
+   gradlew.bat bootRun -x test --no-daemon
+
+Access the application:
+API base URL: http://localhost:8080/api
+
+Web interface: http://localhost:8080/banking/alkicorp_banking_sim.html
+
+H2 Console (database): http://localhost:8080/h2-console
+
+Additional commands
+Run tests: ./gradlew test
+
+Stop the server: Use Ctrl+C in the terminal, or find the process and kill it:
+  lsof -iTCP:8080 -sTCP:LISTEN  # Find the process  kill <pid>                     # Kill it
+
+
+
 ### Run with: http://localhost:8080/banking/alkicorp_banking_sim.html
 ## Overview
 - Purpose: REST API that drives the Alkicorp banking simulator. It models bank “slots” (independent simulation timelines), clients and their checking accounts, transactions, and simple S&P 500 investment actions.
