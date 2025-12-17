@@ -31,6 +31,19 @@ public class BankingSimApiApplication {
         logDebug("debug-session", "run1", "H1,H2,H3,H4,H5", "BankingSimApiApplication.main", "Application starting", "{\"args\":\"" + (args.length > 0 ? String.join(",", args) : "none") + "\"}");
         // #endregion agent log
         
-        SpringApplication.run(BankingSimApiApplication.class, args);
+        try {
+            // #region agent log
+            logDebug("debug-session", "run1", "H4", "BankingSimApiApplication.main", "Before SpringApplication.run", "{}");
+            // #endregion agent log
+            SpringApplication.run(BankingSimApiApplication.class, args);
+            // #region agent log
+            logDebug("debug-session", "run1", "H4", "BankingSimApiApplication.main", "After SpringApplication.run - success", "{}");
+            // #endregion agent log
+        } catch (Exception e) {
+            // #region agent log
+            logDebug("debug-session", "run1", "H4,H5", "BankingSimApiApplication.main", "Exception during startup", "{\"exception\":\"" + e.getClass().getName() + "\",\"message\":\"" + e.getMessage().replace("\"", "\\\"") + "\",\"cause\":\"" + (e.getCause() != null ? e.getCause().getClass().getName() : "null") + "\"}");
+            // #endregion agent log
+            throw e;
+        }
     }
 }

@@ -10,9 +10,6 @@ Run the application:
 Or if on Windows:
    gradlew.bat bootRun -x test --no-daemon
 
-Access the application:
-API base URL: http://localhost:8080/api
-
 Web interface: http://localhost:8080/banking/alkicorp_banking_sim.html
 
 H2 Console (database): http://localhost:8080/h2-console
