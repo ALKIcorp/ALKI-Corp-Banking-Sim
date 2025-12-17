@@ -37,7 +37,9 @@ public class ClientService {
         if (name.length() > 80) {
             throw new ValidationException("Client name is too long (max 80 characters).");
         }
-        BankState state = simulationService.getAndAdvanceState(slotId);
+        BankState state = simulationService.getAndAdvanceState(slotId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
+                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         Client client = new Client();
         client.setBankState(state);
         client.setSlotId(slotId);
@@ -66,7 +68,9 @@ public class ClientService {
     @Transactional
     public Transaction deposit(int slotId, Long clientId, BigDecimal amount) {
         validateAmount(amount, true);
-        BankState state = simulationService.getAndAdvanceState(slotId);
+        BankState state = simulationService.getAndAdvanceState(slotId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
+                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
         client.setCheckingBalance(client.getCheckingBalance().add(amount));
         clientRepository.save(client);
@@ -76,7 +80,9 @@ public class ClientService {
     @Transactional
     public Transaction withdraw(int slotId, Long clientId, BigDecimal amount) {
         validateAmount(amount, false);
-        BankState state = simulationService.getAndAdvanceState(slotId);
+        BankState state = simulationService.getAndAdvanceState(slotId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
+                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
         if (amount.compareTo(client.getCheckingBalance()) > 0) {
             throw new ValidationException("Insufficient funds.");

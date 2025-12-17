@@ -14,6 +14,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class ChartService {
 
     @Transactional(readOnly = true)
     public ClientDistributionResponse getClientDistribution(int slotId) {
-        simulationService.getAndAdvanceState(slotId);
+        // No bank state required for client distribution - can work with empty state
         List<Client> clients = clientRepository.findBySlotId(slotId);
         List<ClientDistributionResponse.Item> items = clients.stream()
             .sorted(Comparator.comparing(Client::getName))
@@ -43,8 +44,8 @@ public class ChartService {
 
     @Transactional(readOnly = true)
     public ActivityChartResponse getActivityChart(int slotId) {
-        BankState state = simulationService.getAndAdvanceState(slotId);
-        int currentDay = (int) Math.floor(state.getGameDay());
+        Optional<BankState> stateOpt = simulationService.getAndAdvanceState(slotId);
+        int currentDay = stateOpt.map(s -> (int) Math.floor(s.getGameDay())).orElse(0);
 
         List<Client> clients = clientRepository.findBySlotId(slotId);
         List<Transaction> transactions = clients.isEmpty()

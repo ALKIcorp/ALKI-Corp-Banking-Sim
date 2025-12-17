@@ -123,16 +123,16 @@ public class SimulationService {
     }
 
     @Transactional
-    public BankState getAndAdvanceState(int slotId) {
-        BankState state = bankStateRepository.findBySlotId(slotId).orElseGet(() -> resetSlot(slotId));
-        return advanceTime(state);
+    public Optional<BankState> getAndAdvanceState(int slotId) {
+        return bankStateRepository.findBySlotId(slotId)
+            .map(this::advanceTime);
     }
 
     @Transactional
     public List<BankState> listAndAdvanceSlots(List<Integer> slotIds) {
         List<BankState> results = new ArrayList<>();
         for (Integer slotId : slotIds) {
-            results.add(getAndAdvanceState(slotId));
+            getAndAdvanceState(slotId).ifPresent(results::add);
         }
         return results;
     }
