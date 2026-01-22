@@ -48,6 +48,12 @@ const investAmountInput = document.getElementById('invest-amount');
 const divestAmountInput = document.getElementById('divest-amount');
 const investmentErrorMessage = document.getElementById('investment-error-message');
 
+const STORAGE_KEYS = {
+    slot: 'bankingSim.currentSlot',
+    screen: 'bankingSim.activeScreen',
+    clientId: 'bankingSim.selectedClientId'
+};
+
 function formatCurrency(value) {
     const amount = typeof value === 'number' ? value : Number(value || 0);
     return amount.toFixed(2);
@@ -72,6 +78,7 @@ function showScreen(screenId) {
         }
     });
     gameHud.style.display = screenId === 'home-screen' ? 'none' : 'flex';
+    localStorage.setItem(STORAGE_KEYS.screen, screenId);
 }
 
 function flashSaveIndicator() {
@@ -118,6 +125,8 @@ async function startGame(slotId) {
     await api(`${API_BASE}/${slotId}/start`, { method: 'POST' });
     currentSlot = slotId;
     selectedClientId = null;
+    localStorage.setItem(STORAGE_KEYS.slot, String(slotId));
+    localStorage.removeItem(STORAGE_KEYS.clientId);
     await refreshAll();
     switchToBankView();
 }
@@ -125,6 +134,8 @@ async function startGame(slotId) {
 async function loadGame(slotId) {
     currentSlot = slotId;
     selectedClientId = null;
+    localStorage.setItem(STORAGE_KEYS.slot, String(slotId));
+    localStorage.removeItem(STORAGE_KEYS.clientId);
     await refreshAll();
     switchToBankView();
 }
@@ -139,6 +150,9 @@ function quitGame() {
     depositAmountInput.value = '';
     withdrawAmountInput.value = '';
     clientNameInput.value = '';
+    localStorage.removeItem(STORAGE_KEYS.slot);
+    localStorage.removeItem(STORAGE_KEYS.clientId);
+    localStorage.setItem(STORAGE_KEYS.screen, 'home-screen');
     showScreen('home-screen');
     updateHomeScreen();
 }
@@ -169,6 +183,7 @@ async function switchToAddClientView() {
 
 async function switchToClientView(clientId) {
     selectedClientId = clientId;
+    localStorage.setItem(STORAGE_KEYS.clientId, String(clientId));
     hudMode.textContent = 'Client';
     await updateClientView();
     showScreen('client-view-screen');
@@ -180,6 +195,7 @@ async function switchToBankView() {
         showScreen('home-screen');
         return;
     }
+    localStorage.removeItem(STORAGE_KEYS.clientId);
     await fetchBankState();
     await fetchClients();
     updateBankView();
@@ -502,7 +518,26 @@ function handleResize() {
 function initializeApp() {
     initializeCharts();
     quitButton.addEventListener('click', quitGame);
-    updateHomeScreen();
+    const savedSlot = localStorage.getItem(STORAGE_KEYS.slot);
+    const savedScreen = localStorage.getItem(STORAGE_KEYS.screen);
+    const savedClientId = localStorage.getItem(STORAGE_KEYS.clientId);
+    if (savedSlot) {
+        const slotId = Number(savedSlot);
+        loadGame(slotId).then(async () => {
+            if (savedScreen === 'client-view-screen' && savedClientId) {
+                await switchToClientView(savedClientId);
+            } else if (savedScreen === 'investment-view-screen') {
+                await switchToInvestmentView();
+            } else {
+                await switchToBankView();
+            }
+        }).catch(error => {
+            console.error('Failed to restore saved session', error);
+            updateHomeScreen();
+        });
+    } else {
+        updateHomeScreen();
+    }
     startPolling();
     
     // Add resize handler for dynamic resizing
