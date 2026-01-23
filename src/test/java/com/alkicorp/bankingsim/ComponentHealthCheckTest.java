@@ -84,7 +84,7 @@ public class ComponentHealthCheckTest {
             // Check if Liquibase changelog table exists
             System.out.println("  → Checking if Liquibase changelog table exists...");
             List<Map<String, Object>> tables = jdbcTemplate.queryForList(
-                "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = 'DATABASECHANGELOG'"
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'databasechangelog'"
             );
             if (tables.isEmpty()) {
                 System.out.println("  ✗ Liquibase changelog table NOT found - Liquibase may not have run");
@@ -97,7 +97,7 @@ public class ComponentHealthCheckTest {
             // Query applied changesets
             System.out.println("  → Checking what Liquibase changesets have been applied...");
             List<Map<String, Object>> changesets = jdbcTemplate.queryForList(
-                "SELECT ID, AUTHOR, FILENAME, EXECTYPE, MD5SUM FROM DATABASECHANGELOG ORDER BY DATEEXECUTED"
+                "SELECT id, author, filename, exectype, md5sum FROM public.databasechangelog ORDER BY dateexecuted"
             );
             if (changesets.isEmpty()) {
                 System.out.println("  ✗ No changesets found in changelog table");
@@ -116,11 +116,11 @@ public class ComponentHealthCheckTest {
 
             // Check if required tables exist
             System.out.println("  → Verifying required database tables exist...");
-            String[] requiredTables = {"BANK_STATE", "CLIENT", "CLIENT_TRANSACTION", "INVESTMENT_EVENT"};
+            String[] requiredTables = {"bank_state", "client", "client_transaction", "investment_event"};
             int foundTables = 0;
             for (String tableName : requiredTables) {
                 List<Map<String, Object>> tableCheck = jdbcTemplate.queryForList(
-                    "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = ?",
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?",
                     tableName
                 );
                 if (!tableCheck.isEmpty()) {
@@ -176,8 +176,8 @@ public class ComponentHealthCheckTest {
 
             // Test getAndAdvanceState
             var advancedState = simulationService.getAndAdvanceState(TEST_SLOT_ID);
-            Assertions.assertNotNull(advancedState);
-            Assertions.assertNotNull(advancedState.getGameDay());
+            Assertions.assertTrue(advancedState.isPresent());
+            Assertions.assertNotNull(advancedState.get().getGameDay());
             reporter.pass("getAndAdvanceState() - advances time correctly");
 
             // Test listAndAdvanceSlots

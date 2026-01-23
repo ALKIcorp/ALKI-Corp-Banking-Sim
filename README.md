@@ -8,7 +8,7 @@ This guide covers how to run the Banking Sim API locally on **Windows** and **Ma
 
 - **Java 17** 
 - **PostgreSQL 14** 
-- **Gradle** 
+- **Maven 3.9+** 
 
 ---
 
@@ -65,7 +65,30 @@ For more details, see [Scripts/README_Scripts.md](Scripts/README_Scripts.md).
 
 ---
 
+## 4. Build & Run (Maven)
+
+From the repo root:
+
+```bash
+mvn test
+```
+
+```bash
+mvn spring-boot:run
+```
+
+---
+
 ## API Requests
+
+### Authentication
+- POST /auth/register — create a user (body: RegisterRequest { username, email, password })
+- POST /auth/login — login and receive JWT (body: LoginRequest { usernameOrEmail, password })
+
+Include the JWT in requests to protected endpoints:
+```
+Authorization: Bearer <token>
+```
 
 ### Slots
 - GET /api/slots — list slot summaries

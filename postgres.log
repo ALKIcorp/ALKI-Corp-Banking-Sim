@@ -823,3 +823,458 @@
 2026-01-22 18:02:21.554 EST [10787] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.924 s, sync=0.001 s, total=0.927 s; sync files=9, longest=0.001 s, average=0.001 s; distance=48 kB, estimate=69 kB; lsn=0/1F88748, redo lsn=0/1F886F0
 2026-01-22 18:07:20.557 EST [10787] LOG:  checkpoint starting: time
 2026-01-22 18:07:20.767 EST [10787] LOG:  checkpoint complete: wrote 2 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.204 s, sync=0.001 s, total=0.212 s; sync files=3, longest=0.001 s, average=0.001 s; distance=3 kB, estimate=63 kB; lsn=0/1F89740, redo lsn=0/1F896E8
+2026-01-22 18:12:20.770 EST [10787] LOG:  checkpoint starting: time
+2026-01-22 18:12:21.685 EST [10787] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.914 s, sync=0.001 s, total=0.916 s; sync files=9, longest=0.001 s, average=0.001 s; distance=52 kB, estimate=62 kB; lsn=0/1F96840, redo lsn=0/1F967E8
+2026-01-22 23:07:08.479 EST [4549] FATAL:  role "bank_user" does not exist
+2026-01-22 23:07:08.484 EST [4550] FATAL:  role "bank_user" does not exist
+2026-01-22 23:08:30.431 EST [6188] FATAL:  database "alkicorp" does not exist
+2026-01-22 23:12:20.984 EST [10787] LOG:  checkpoint starting: time
+2026-01-22 23:13:59.626 EST [10787] LOG:  checkpoint complete: wrote 973 buffers (5.9%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=98.628 s, sync=0.010 s, total=98.643 s; sync files=308, longest=0.001 s, average=0.001 s; distance=4452 kB, estimate=4452 kB; lsn=0/23EFA68, redo lsn=0/23EF9D8
+2026-01-22 23:15:07.539 EST [12316] ERROR:  permission denied to create role
+2026-01-22 23:15:07.539 EST [12316] DETAIL:  Only roles with the CREATEROLE attribute may create roles.
+2026-01-22 23:15:07.539 EST [12316] STATEMENT:  -- 1. Create app role/user (adjust password)
+	CREATE ROLE bank_app LOGIN PASSWORD 'change_me';
+	
+	-- 2. Create database owned by app role
+	CREATE DATABASE bank_db OWNER bank_app;
+2026-01-22 23:16:09.529 EST [12316] ERROR:  permission denied to alter role
+2026-01-22 23:16:09.529 EST [12316] DETAIL:  Only roles with the SUPERUSER attribute may alter roles with the SUPERUSER attribute.
+2026-01-22 23:16:09.529 EST [12316] STATEMENT:  ALTER ROLE alkicorp CREATEROLE;
+2026-01-22 23:17:45.677 EST [17306] FATAL:  database "alkicorp" does not exist
+2026-01-22 23:19:22.416 EST [12316] ERROR:  permission denied for database postgres
+2026-01-22 23:19:22.416 EST [12316] STATEMENT:  CREATE SCHEMA bank AUTHORIZATION bank_user;
+	SET search_path TO bank, public;
+2026-01-22 23:20:34.909 EST [12316] ERROR:  permission denied to alter role
+2026-01-22 23:20:34.909 EST [12316] DETAIL:  Only roles with the CREATEROLE attribute and the ADMIN option on role "bank_user" may alter this role.
+2026-01-22 23:20:34.909 EST [12316] STATEMENT:  ALTER ROLE bank_user CREATEDB CREATEROLE;
+2026-01-22 23:25:43.195 EST [12316] ERROR:  permission denied for database postgres
+2026-01-22 23:25:43.195 EST [12316] STATEMENT:  -- Connect to bank_app in pgAdmin before running this.
+	
+	-- Create schema + set search path for bank_user
+	CREATE SCHEMA IF NOT EXISTS bank AUTHORIZATION bank_user;
+	ALTER ROLE bank_user SET search_path = bank, public;
+	
+	-- USERS
+	CREATE TABLE IF NOT EXISTS bank.users (
+	  id            BIGSERIAL PRIMARY KEY,
+	  email         VARCHAR(255) NOT NULL UNIQUE,
+	  password_hash VARCHAR(255) NOT NULL,
+	  first_name    VARCHAR(100) NOT NULL,
+	  last_name     VARCHAR(100) NOT NULL,
+	  phone         VARCHAR(30),
+	  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at    TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- ROLES
+	CREATE TABLE IF NOT EXISTS bank.roles (
+	  id    BIGSERIAL PRIMARY KEY,
+	  name  VARCHAR(50) NOT NULL UNIQUE
+	);
+	
+	-- USER_ROLES (many-to-many)
+	CREATE TABLE IF NOT EXISTS bank.user_roles (
+	  user_id BIGINT NOT NULL REFERENCES bank.users(id) ON DELETE CASCADE,
+	  role_id BIGINT NOT NULL REFERENCES bank.roles(id) ON DELETE CASCADE,
+	  PRIMARY KEY (user_id, role_id)
+	);
+	
+	-- LOAN PRODUCTS
+	CREATE TABLE IF NOT EXISTS bank.loan_products (
+	  id              BIGSERIAL PRIMARY KEY,
+	  name            VARCHAR(200) NOT NULL,
+	  description     TEXT,
+	  interest_rate   NUMERIC(5,2) NOT NULL CHECK (interest_rate >= 0),
+	  min_amount      NUMERIC(14,2) NOT NULL CHECK (min_amount >= 0),
+	  max_amount      NUMERIC(14,2) NOT NULL CHECK (max_amount >= min_amount),
+	  term_months     INTEGER NOT NULL CHECK (term_months > 0),
+	  image_url       TEXT,
+	  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+	  created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- LOAN APPLICATIONS
+	CREATE TABLE IF NOT EXISTS bank.loan_applications (
+	  id                BIGSERIAL PRIMARY KEY,
+	  user_id           BIGINT NOT NULL REFERENCES bank.users(id) ON DELETE CASCADE,
+	  loan_product_id   BIGINT NOT NULL REFERENCES bank.loan_products(id) ON DELETE RESTRICT,
+	  requested_amount  NUMERIC(14,2) NOT NULL CHECK (requested_amount > 0),
+	  term_months       INTEGER NOT NULL CHECK (term_months > 0),
+	  status            VARCHAR(20) NOT NULL,
+	  notes             TEXT,
+	  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED'))
+	);
+	
+	-- LOANS (created after approval)
+	CREATE TABLE IF NOT EXISTS bank.loans (
+	  id                BIGSERIAL PRIMARY KEY,
+	  user_id           BIGINT NOT NULL REFERENCES bank.users(id) ON DELETE CASCADE,
+	  loan_product_id   BIGINT NOT NULL REFERENCES bank.loan_products(id) ON DELETE RESTRICT,
+	  application_id    BIGINT UNIQUE REFERENCES bank.loan_applications(id) ON DELETE SET NULL,
+	  principal         NUMERIC(14,2) NOT NULL CHECK (principal > 0),
+	  interest_rate     NUMERIC(5,2) NOT NULL CHECK (interest_rate >= 0),
+	  term_months       INTEGER NOT NULL CHECK (term_months > 0),
+	  start_date        DATE NOT NULL,
+	  status            VARCHAR(20) NOT NULL,
+	  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  CHECK (status IN ('ACTIVE', 'PAID', 'DEFAULTED'))
+	);
+	
+	-- LOAN PAYMENTS
+	CREATE TABLE IF NOT EXISTS bank.loan_payments (
+	  id          BIGSERIAL PRIMARY KEY,
+	  loan_id     BIGINT NOT NULL REFERENCES bank.loans(id) ON DELETE CASCADE,
+	  amount      NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+	  paid_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+	  method      VARCHAR(30) NOT NULL,
+	  reference   VARCHAR(100),
+	  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- UPLOADS (local files)
+	CREATE TABLE IF NOT EXISTS bank.uploads (
+	  id            BIGSERIAL PRIMARY KEY,
+	  user_id       BIGINT REFERENCES bank.users(id) ON DELETE SET NULL,
+	  filename      VARCHAR(255) NOT NULL,
+	  original_name VARCHAR(255),
+	  mime_type     VARCHAR(100),
+	  file_size     BIGINT CHECK (file_size >= 0),
+	  storage_path  TEXT NOT NULL,
+	  created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- Helpful indexes
+	CREATE INDEX IF NOT EXISTS idx_loan_applications_user ON bank.loan_applications(user_id);
+	CREATE INDEX IF NOT EXISTS idx_loans_user ON bank.loans(user_id);
+	CREATE INDEX IF NOT EXISTS idx_payments_loan ON bank.loan_payments(loan_id);
+	
+	-- Roles
+	INSERT INTO bank.roles (name)
+	VALUES
+	  ('ROLE_ADMIN'),
+	  ('ROLE_USER');
+	
+	-- Users (password_hash should be BCrypt from backend)
+	INSERT INTO bank.users (email, password_hash, first_name, last_name, phone)
+	VALUES
+	  ('admin@example.com', '{bcrypt_hash_here}', 'Admin', 'User', '555-0001'),
+	  ('client@example.com', '{bcrypt_hash_here}', 'Client', 'User', '555-0002');
+	
+	-- User roles
+	INSERT INTO bank.user_roles (user_id, role_id)
+	VALUES
+	  (1, 1), -- admin user -> ROLE_ADMIN
+	  (1, 2), -- admin user -> ROLE_USER
+	  (2, 2); -- client user -> ROLE_USER
+	
+	-- Loan products
+	INSERT INTO bank.loan_products (
+	  name, description, interest_rate, min_amount, max_amount, term_months, image_url, is_active
+	)
+	VALUES
+	  ('Starter Loan', 'Basic loan product', 5.50, 1000.00, 5000.00, 12, NULL, TRUE);
+	
+	-- Loan applications
+	INSERT INTO bank.loan_applications (
+	  user_id, loan_product_id, requested_amount, term_months, status, notes
+	)
+	VALUES
+	  (2, 1, 2500.00, 12, 'PENDING', 'First application');
+	
+	-- Loans (after approval)
+	INSERT INTO bank.loans (
+	  user_id, loan_product_id, application_id, principal, interest_rate, term_months, start_date, status
+	)
+	VALUES
+	  (2, 1, 1, 2500.00, 5.50, 12, CURRENT_DATE, 'ACTIVE');
+	
+	-- Payments
+	INSERT INTO bank.loan_payments (loan_id, amount, method, reference)
+	VALUES
+	  (1, 250.00, 'CARD', 'PAY-001');
+	
+	-- Uploads
+	INSERT INTO bank.uploads (
+	  user_id, filename, original_name, mime_type, file_size, storage_path
+	)
+	VALUES
+	  (2, 'upload_12345.pdf', 'proof_of_income.pdf', 'application/pdf', 123456, '/uploads/upload_12345.pdf');
+2026-01-22 23:27:03.880 EST [12316] ERROR:  permission denied for database postgres
+2026-01-22 23:27:03.880 EST [12316] STATEMENT:  -- Connect to bank_app in pgAdmin before running this.
+	
+	-- Create schema + set search path for bank_user
+	CREATE SCHEMA IF NOT EXISTS bank AUTHORIZATION bank_user;
+	ALTER ROLE bank_user SET search_path = bank, public;
+	
+	-- USERS
+	CREATE TABLE IF NOT EXISTS bank.users (
+	  id            BIGSERIAL PRIMARY KEY,
+	  email         VARCHAR(255) NOT NULL UNIQUE,
+	  password_hash VARCHAR(255) NOT NULL,
+	  first_name    VARCHAR(100) NOT NULL,
+	  last_name     VARCHAR(100) NOT NULL,
+	  phone         VARCHAR(30),
+	  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at    TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- ROLES
+	CREATE TABLE IF NOT EXISTS bank.roles (
+	  id    BIGSERIAL PRIMARY KEY,
+	  name  VARCHAR(50) NOT NULL UNIQUE
+	);
+	
+	-- USER_ROLES (many-to-many)
+	CREATE TABLE IF NOT EXISTS bank.user_roles (
+	  user_id BIGINT NOT NULL REFERENCES bank.users(id) ON DELETE CASCADE,
+	  role_id BIGINT NOT NULL REFERENCES bank.roles(id) ON DELETE CASCADE,
+	  PRIMARY KEY (user_id, role_id)
+	);
+	
+	-- LOAN PRODUCTS
+	CREATE TABLE IF NOT EXISTS bank.loan_products (
+	  id              BIGSERIAL PRIMARY KEY,
+	  name            VARCHAR(200) NOT NULL,
+	  description     TEXT,
+	  interest_rate   NUMERIC(5,2) NOT NULL CHECK (interest_rate >= 0),
+	  min_amount      NUMERIC(14,2) NOT NULL CHECK (min_amount >= 0),
+	  max_amount      NUMERIC(14,2) NOT NULL CHECK (max_amount >= min_amount),
+	  term_months     INTEGER NOT NULL CHECK (term_months > 0),
+	  image_url       TEXT,
+	  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+	  created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- LOAN APPLICATIONS
+	CREATE TABLE IF NOT EXISTS bank.loan_applications (
+	  id                BIGSERIAL PRIMARY KEY,
+	  user_id           BIGINT NOT NULL REFERENCES bank.users(id) ON DELETE CASCADE,
+	  loan_product_id   BIGINT NOT NULL REFERENCES bank.loan_products(id) ON DELETE RESTRICT,
+	  requested_amount  NUMERIC(14,2) NOT NULL CHECK (requested_amount > 0),
+	  term_months       INTEGER NOT NULL CHECK (term_months > 0),
+	  status            VARCHAR(20) NOT NULL,
+	  notes             TEXT,
+	  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED'))
+	);
+	
+	-- LOANS (created after approval)
+	CREATE TABLE IF NOT EXISTS bank.loans (
+	  id                BIGSERIAL PRIMARY KEY,
+	  user_id           BIGINT NOT NULL REFERENCES bank.users(id) ON DELETE CASCADE,
+	  loan_product_id   BIGINT NOT NULL REFERENCES bank.loan_products(id) ON DELETE RESTRICT,
+	  application_id    BIGINT UNIQUE REFERENCES bank.loan_applications(id) ON DELETE SET NULL,
+	  principal         NUMERIC(14,2) NOT NULL CHECK (principal > 0),
+	  interest_rate     NUMERIC(5,2) NOT NULL CHECK (interest_rate >= 0),
+	  term_months       INTEGER NOT NULL CHECK (term_months > 0),
+	  start_date        DATE NOT NULL,
+	  status            VARCHAR(20) NOT NULL,
+	  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+	  CHECK (status IN ('ACTIVE', 'PAID', 'DEFAULTED'))
+	);
+	
+	-- LOAN PAYMENTS
+	CREATE TABLE IF NOT EXISTS bank.loan_payments (
+	  id          BIGSERIAL PRIMARY KEY,
+	  loan_id     BIGINT NOT NULL REFERENCES bank.loans(id) ON DELETE CASCADE,
+	  amount      NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+	  paid_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+	  method      VARCHAR(30) NOT NULL,
+	  reference   VARCHAR(100),
+	  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- UPLOADS (local files)
+	CREATE TABLE IF NOT EXISTS bank.uploads (
+	  id            BIGSERIAL PRIMARY KEY,
+	  user_id       BIGINT REFERENCES bank.users(id) ON DELETE SET NULL,
+	  filename      VARCHAR(255) NOT NULL,
+	  original_name VARCHAR(255),
+	  mime_type     VARCHAR(100),
+	  file_size     BIGINT CHECK (file_size >= 0),
+	  storage_path  TEXT NOT NULL,
+	  created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+	);
+	
+	-- Helpful indexes
+	CREATE INDEX IF NOT EXISTS idx_loan_applications_user ON bank.loan_applications(user_id);
+	CREATE INDEX IF NOT EXISTS idx_loans_user ON bank.loans(user_id);
+	CREATE INDEX IF NOT EXISTS idx_payments_loan ON bank.loan_payments(loan_id);
+	
+	-- Roles
+	INSERT INTO bank.roles (name)
+	VALUES
+	  ('ROLE_ADMIN'),
+	  ('ROLE_USER');
+	
+	-- Users (password_hash should be BCrypt from backend)
+	INSERT INTO bank.users (email, password_hash, first_name, last_name, phone)
+	VALUES
+	  ('admin@example.com', '{bcrypt_hash_here}', 'Admin', 'User', '555-0001'),
+	  ('client@example.com', '{bcrypt_hash_here}', 'Client', 'User', '555-0002');
+	
+	-- User roles
+	INSERT INTO bank.user_roles (user_id, role_id)
+	VALUES
+	  (1, 1), -- admin user -> ROLE_ADMIN
+	  (1, 2), -- admin user -> ROLE_USER
+	  (2, 2); -- client user -> ROLE_USER
+	
+	-- Loan products
+	INSERT INTO bank.loan_products (
+	  name, description, interest_rate, min_amount, max_amount, term_months, image_url, is_active
+	)
+	VALUES
+	  ('Starter Loan', 'Basic loan product', 5.50, 1000.00, 5000.00, 12, NULL, TRUE);
+	
+	-- Loan applications
+	INSERT INTO bank.loan_applications (
+	  user_id, loan_product_id, requested_amount, term_months, status, notes
+	)
+	VALUES
+	  (2, 1, 2500.00, 12, 'PENDING', 'First application');
+	
+	-- Loans (after approval)
+	INSERT INTO bank.loans (
+	  user_id, loan_product_id, application_id, principal, interest_rate, term_months, start_date, status
+	)
+	VALUES
+	  (2, 1, 1, 2500.00, 5.50, 12, CURRENT_DATE, 'ACTIVE');
+	
+	-- Payments
+	INSERT INTO bank.loan_payments (loan_id, amount, method, reference)
+	VALUES
+	  (1, 250.00, 'CARD', 'PAY-001');
+	
+	-- Uploads
+	INSERT INTO bank.uploads (
+	  user_id, filename, original_name, mime_type, file_size, storage_path
+	)
+	VALUES
+	  (2, 'upload_12345.pdf', 'proof_of_income.pdf', 'application/pdf', 123456, '/uploads/upload_12345.pdf');
+2026-01-22 23:27:20.631 EST [10787] LOG:  checkpoint starting: time
+2026-01-22 23:27:20.741 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.103 s, sync=0.001 s, total=0.110 s; sync files=2, longest=0.001 s, average=0.001 s; distance=3 kB, estimate=4007 kB; lsn=0/23F0738, redo lsn=0/23F06E0
+2026-01-22 23:32:20.743 EST [10787] LOG:  checkpoint starting: time
+2026-01-22 23:32:36.835 EST [10787] LOG:  checkpoint complete: wrote 158 buffers (1.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=16.089 s, sync=0.003 s, total=16.093 s; sync files=93, longest=0.001 s, average=0.001 s; distance=670 kB, estimate=3673 kB; lsn=0/2498198, redo lsn=0/2498108
+2026-01-22 23:37:20.838 EST [10787] LOG:  checkpoint starting: time
+2026-01-22 23:37:21.560 EST [10787] LOG:  checkpoint complete: wrote 7 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.719 s, sync=0.001 s, total=0.723 s; sync files=6, longest=0.001 s, average=0.001 s; distance=30 kB, estimate=3309 kB; lsn=0/249FC18, redo lsn=0/249FBC0
+2026-01-22 23:47:20.563 EST [10787] LOG:  checkpoint starting: time
+2026-01-22 23:47:23.535 EST [10787] LOG:  checkpoint complete: wrote 29 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=2.963 s, sync=0.003 s, total=2.972 s; sync files=25, longest=0.001 s, average=0.001 s; distance=153 kB, estimate=2993 kB; lsn=0/24CD848, redo lsn=0/24C6190
+2026-01-22 23:52:20.537 EST [10787] LOG:  checkpoint starting: time
+2026-01-22 23:52:34.346 EST [10787] LOG:  checkpoint complete: wrote 135 buffers (0.8%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=13.797 s, sync=0.003 s, total=13.810 s; sync files=82, longest=0.001 s, average=0.001 s; distance=922 kB, estimate=2786 kB; lsn=0/25ACDA0, redo lsn=0/25ACD10
+2026-01-23 00:05:37.665 EST [30335] ERROR:  syntax error at or near "<" at character 15
+2026-01-23 00:05:37.665 EST [30335] STATEMENT:  SELECT * FROM <table_name> ORDER BY id DESC LIMIT 20;
+2026-01-23 00:06:05.649 EST [30335] ERROR:  syntax error at or near "<" at character 15
+2026-01-23 00:06:05.649 EST [30335] STATEMENT:  SELECT * FROM <users> ORDER BY id DESC LIMIT 20;
+2026-01-23 00:06:41.879 EST [30335] ERROR:  relation "users" does not exist at character 15
+2026-01-23 00:06:41.879 EST [30335] STATEMENT:  SELECT * FROM users ORDER BY id DESC LIMIT 20;
+2026-01-23 00:07:20.353 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 00:07:23.226 EST [10787] LOG:  checkpoint complete: wrote 28 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=2.864 s, sync=0.002 s, total=2.874 s; sync files=18, longest=0.001 s, average=0.001 s; distance=78 kB, estimate=2515 kB; lsn=0/25C0630, redo lsn=0/25C05D8
+2026-01-23 00:12:20.228 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 00:12:20.543 EST [10787] LOG:  checkpoint complete: wrote 3 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.309 s, sync=0.001 s, total=0.316 s; sync files=3, longest=0.001 s, average=0.001 s; distance=4 kB, estimate=2264 kB; lsn=0/25C1898, redo lsn=0/25C1840
+2026-01-23 01:07:20.562 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 01:07:20.977 EST [10787] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.409 s, sync=0.001 s, total=0.416 s; sync files=4, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=2038 kB; lsn=0/25C1D68, redo lsn=0/25C1D10
+2026-01-23 01:12:20.979 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 01:12:21.088 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.103 s, sync=0.001 s, total=0.109 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=1834 kB; lsn=0/25C20C8, redo lsn=0/25C2070
+2026-01-23 01:27:36.837 EST [30335] ERROR:  syntax error at or near "users" at character 1
+2026-01-23 01:27:36.837 EST [30335] STATEMENT:  users
+2026-01-23 01:47:20.101 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 01:47:20.411 EST [10787] LOG:  checkpoint complete: wrote 3 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.304 s, sync=0.001 s, total=0.310 s; sync files=4, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=1651 kB; lsn=0/25C2578, redo lsn=0/25C2520
+2026-01-23 01:57:20.415 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 01:57:21.135 EST [10787] LOG:  checkpoint complete: wrote 7 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.714 s, sync=0.001 s, total=0.721 s; sync files=7, longest=0.001 s, average=0.001 s; distance=21 kB, estimate=1488 kB; lsn=0/25C7AA0, redo lsn=0/25C7A48
+2026-01-23 02:06:05.811 EST [30335] ERROR:  syntax error at or near "loan_products" at character 1
+2026-01-23 02:06:05.811 EST [30335] STATEMENT:  loan_products
+2026-01-23 02:20:25.753 EST [30335] ERROR:  column "rate_index" of relation "loan_products" does not exist at character 91
+2026-01-23 02:20:25.753 EST [30335] STATEMENT:  -- Loan products
+	INSERT INTO bank.loan_products (
+	  name, description, interest_rate_apr, rate_index, product_type,
+	  min_amount, max_amount, min_term_months, max_term_months,
+	  min_down_payment_pct, min_down_payment_amount, min_credit_score,
+	  image_url, is_active
+	)
+	VALUES
+	  ('Starter Loan', 'Basic loan product', 5.50, NULL, 'LOAN',
+	   1000.00, 5000.00, 60, 60,
+	   NULL, NULL, 620,
+	   NULL, TRUE);
+2026-01-23 02:21:05.335 EST [30335] ERROR:  column "interest_rate_apr" of relation "loan_products" already exists
+2026-01-23 02:21:05.335 EST [30335] STATEMENT:  ALTER TABLE bank.loan_products
+	  ADD COLUMN interest_rate_apr NUMERIC(5,2),
+	  ADD COLUMN rate_index NUMERIC(5,2),
+	  ADD COLUMN product_type VARCHAR(20) NOT NULL DEFAULT 'LOAN',
+	  ADD COLUMN min_term_months INTEGER,
+	  ADD COLUMN max_term_months INTEGER,
+	  ADD COLUMN min_down_payment_pct NUMERIC(5,2),
+	  ADD COLUMN min_down_payment_amount NUMERIC(14,2),
+	  ADD COLUMN min_credit_score INTEGER;
+	
+	-- Backfill old fields if you previously had interest_rate/term_months
+	UPDATE bank.loan_products
+	SET interest_rate_apr = interest_rate
+	WHERE interest_rate_apr IS NULL;
+	
+	UPDATE bank.loan_products
+	SET min_term_months = term_months,
+	    max_term_months = term_months
+	WHERE min_term_months IS NULL OR max_term_months IS NULL;
+2026-01-23 02:22:20.145 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 02:22:21.901 EST [10787] LOG:  checkpoint complete: wrote 17 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.752 s, sync=0.002 s, total=1.757 s; sync files=17, longest=0.001 s, average=0.001 s; distance=96 kB, estimate=1349 kB; lsn=0/25DFC10, redo lsn=0/25DFBB8
+2026-01-23 02:22:26.008 EST [30335] ERROR:  column "is_active" of relation "loan_products" does not exist at character 257
+2026-01-23 02:22:26.008 EST [30335] STATEMENT:  -- Loan products
+	INSERT INTO bank.loan_products (
+	  name, description, interest_rate_apr, rate_index, product_type,
+	  min_amount, max_amount, min_term_months, max_term_months,
+	  min_down_payment_pct, min_down_payment_amount, min_credit_score,
+	  image_url, is_active
+	)
+	VALUES
+	  ('Starter Loan', 'Basic loan product', 5.50, NULL, 'LOAN',
+	   1000.00, 5000.00, 60, 60,
+	   NULL, NULL, 620,
+	   NULL, TRUE);
+2026-01-23 02:23:55.556 EST [30335] ERROR:  relation "bank.app_settings" does not exist at character 13
+2026-01-23 02:23:55.556 EST [30335] STATEMENT:  INSERT INTO bank.app_settings (setting_key, setting_value)
+	VALUES ('prime_rate', 7.25);
+2026-01-23 02:27:20.903 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 02:27:25.617 EST [10787] LOG:  checkpoint complete: wrote 46 buffers (0.3%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=4.708 s, sync=0.002 s, total=4.714 s; sync files=37, longest=0.001 s, average=0.001 s; distance=207 kB, estimate=1234 kB; lsn=0/26139D8, redo lsn=0/2613948
+2026-01-23 17:10:22.466 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:10:22.578 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.105 s, sync=0.001 s, total=0.113 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=1111 kB; lsn=0/2613D78, redo lsn=0/2613D20
+2026-01-23 17:15:22.579 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:15:24.318 EST [10787] LOG:  checkpoint complete: wrote 17 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.734 s, sync=0.002 s, total=1.740 s; sync files=11, longest=0.001 s, average=0.001 s; distance=106 kB, estimate=1011 kB; lsn=0/262E588, redo lsn=0/262E530
+2026-01-23 17:20:22.320 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:20:23.146 EST [10787] LOG:  checkpoint complete: wrote 8 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.818 s, sync=0.001 s, total=0.827 s; sync files=6, longest=0.001 s, average=0.001 s; distance=67 kB, estimate=916 kB; lsn=0/263F208, redo lsn=0/263F1B0
+2026-01-23 17:25:22.148 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:25:23.370 EST [10787] LOG:  checkpoint complete: wrote 12 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.219 s, sync=0.001 s, total=1.223 s; sync files=10, longest=0.001 s, average=0.001 s; distance=69 kB, estimate=831 kB; lsn=0/2650940, redo lsn=0/26508E8
+2026-01-23 17:30:22.378 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:30:23.198 EST [10787] LOG:  checkpoint complete: wrote 8 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.816 s, sync=0.001 s, total=0.821 s; sync files=6, longest=0.001 s, average=0.001 s; distance=53 kB, estimate=754 kB; lsn=0/265DDC0, redo lsn=0/265DD68
+2026-01-23 17:35:22.200 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:35:22.720 EST [10787] LOG:  checkpoint complete: wrote 5 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.512 s, sync=0.001 s, total=0.520 s; sync files=6, longest=0.001 s, average=0.001 s; distance=6 kB, estimate=679 kB; lsn=0/265F8F0, redo lsn=0/265F898
+2026-01-23 17:40:22.722 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:40:22.828 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.102 s, sync=0.001 s, total=0.107 s; sync files=2, longest=0.001 s, average=0.001 s; distance=4 kB, estimate=611 kB; lsn=0/2660A30, redo lsn=0/26609D8
+2026-01-23 17:45:22.830 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:45:23.348 EST [10787] LOG:  checkpoint complete: wrote 5 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.510 s, sync=0.001 s, total=0.518 s; sync files=5, longest=0.001 s, average=0.001 s; distance=39 kB, estimate=554 kB; lsn=0/266AA18, redo lsn=0/266A9C0
+2026-01-23 17:50:22.350 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:50:23.586 EST [10787] LOG:  checkpoint complete: wrote 12 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.228 s, sync=0.001 s, total=1.237 s; sync files=10, longest=0.001 s, average=0.001 s; distance=70 kB, estimate=506 kB; lsn=0/267C478, redo lsn=0/267C420
+2026-01-23 17:55:22.587 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 17:55:23.111 EST [10787] LOG:  checkpoint complete: wrote 5 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.515 s, sync=0.001 s, total=0.524 s; sync files=5, longest=0.001 s, average=0.001 s; distance=39 kB, estimate=459 kB; lsn=0/2686170, redo lsn=0/2686118
+2026-01-23 18:00:22.116 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 18:00:23.048 EST [10787] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.924 s, sync=0.001 s, total=0.932 s; sync files=9, longest=0.001 s, average=0.001 s; distance=45 kB, estimate=418 kB; lsn=0/2691630, redo lsn=0/26915A0
+2026-01-23 18:05:22.050 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 18:05:22.565 EST [10787] LOG:  checkpoint complete: wrote 5 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.511 s, sync=0.001 s, total=0.515 s; sync files=5, longest=0.001 s, average=0.001 s; distance=40 kB, estimate=380 kB; lsn=0/269B8A0, redo lsn=0/269B848
+2026-01-23 18:10:22.567 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 18:10:23.489 EST [10787] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.920 s, sync=0.001 s, total=0.923 s; sync files=9, longest=0.001 s, average=0.001 s; distance=47 kB, estimate=347 kB; lsn=0/26A74B0, redo lsn=0/26A7458
+2026-01-23 18:15:22.491 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 18:15:23.006 EST [10787] LOG:  checkpoint complete: wrote 5 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.508 s, sync=0.001 s, total=0.515 s; sync files=5, longest=0.001 s, average=0.001 s; distance=39 kB, estimate=316 kB; lsn=0/26B11A0, redo lsn=0/26B1148
+2026-01-23 18:20:22.010 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 18:20:28.386 EST [10787] LOG:  checkpoint complete: wrote 62 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=6.370 s, sync=0.004 s, total=6.376 s; sync files=60, longest=0.001 s, average=0.001 s; distance=260 kB, estimate=310 kB; lsn=0/26F2488, redo lsn=0/26F2430
+2026-01-23 18:25:22.388 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 18:25:22.494 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.103 s, sync=0.001 s, total=0.106 s; sync files=2, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=279 kB; lsn=0/26F29C8, redo lsn=0/26F2970
+2026-01-23 18:40:22.504 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 18:40:22.615 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.104 s, sync=0.001 s, total=0.112 s; sync files=2, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=251 kB; lsn=0/26F2EA8, redo lsn=0/26F2E50

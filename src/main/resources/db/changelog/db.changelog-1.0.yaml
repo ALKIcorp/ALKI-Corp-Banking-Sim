@@ -286,9 +286,6 @@ databaseChangeLog:
         - sql:
             sql: SELECT setval('bank_state_id_seq', 4, false)
             dbms: postgresql
-        - sql:
-            sql: ALTER TABLE bank_state ALTER COLUMN id RESTART WITH 4
-            dbms: h2
   - changeSet:
       id: 6b-set-bank-state-sequence-value
       author: alkicorp
@@ -316,9 +313,6 @@ databaseChangeLog:
         - sql:
             sql: ALTER TABLE bank_state ALTER COLUMN id RESTART WITH 4
             dbms: postgresql
-        - sql:
-            sql: ALTER TABLE bank_state ALTER COLUMN id RESTART WITH 4
-            dbms: h2
   - changeSet:
       id: 7-fix-client-id-auto-increment
       author: alkicorp
@@ -397,16 +391,118 @@ databaseChangeLog:
                   AND column_name = 'id'
                   AND is_identity = 'YES'
               dbms: postgresql
-          - sqlCheck:
-              expectedResult: 0
-              sql: >
-                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_NAME = 'INVESTMENT_EVENT'
-                  AND COLUMN_NAME = 'ID'
-                  AND IS_IDENTITY = 'YES'
-              dbms: h2
       changes:
         - addAutoIncrement:
             tableName: investment_event
             columnName: id
             columnDataType: BIGINT
+  - changeSet:
+      id: 10-create-roles
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - sqlCheck:
+              expectedResult: 1
+              sql: SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roles'
+      changes:
+        - createTable:
+            tableName: roles
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(60)
+                  constraints:
+                    nullable: false
+                    unique: true
+  - changeSet:
+      id: 11-create-users
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - sqlCheck:
+              expectedResult: 1
+              sql: SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: VARCHAR(120)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 12-create-user-roles
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - sqlCheck:
+              expectedResult: 1
+              sql: SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_roles'
+      changes:
+        - createTable:
+            tableName: user_roles
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: user_roles
+            columnNames: user_id, role_id
+            constraintName: pk_user_roles
+        - addForeignKeyConstraint:
+            baseTableName: user_roles
+            baseColumnNames: user_id
+            constraintName: fk_user_roles_user
+            referencedTableName: users
+            referencedColumnNames: id
+        - addForeignKeyConstraint:
+            baseTableName: user_roles
+            baseColumnNames: role_id
+            constraintName: fk_user_roles_role
+            referencedTableName: roles
+            referencedColumnNames: id
