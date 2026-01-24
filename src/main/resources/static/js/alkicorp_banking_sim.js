@@ -19,6 +19,18 @@ const hudMode = document.getElementById('hud-mode');
 const hudDate = document.getElementById('hud-date');
 const saveIndicator = document.getElementById('save-indicator');
 const quitButton = document.getElementById('quit-button');
+const loginForm = document.getElementById('login-form');
+const loginUsernameInput = document.getElementById('login-username-input');
+const loginPasswordInput = document.getElementById('login-password-input');
+const loginErrorMessage = document.getElementById('login-error-message');
+const showRegisterButton = document.getElementById('show-register-button');
+const registerForm = document.getElementById('register-form');
+const registerUsernameInput = document.getElementById('register-username-input');
+const registerEmailInput = document.getElementById('register-email-input');
+const registerPasswordInput = document.getElementById('register-password-input');
+const registerConfirmInput = document.getElementById('register-confirm-input');
+const registerErrorMessage = document.getElementById('register-error-message');
+const showLoginButton = document.getElementById('show-login-button');
 
 const clientNameInput = document.getElementById('client-name-input');
 const clientViewName = document.getElementById('client-view-name');
@@ -51,7 +63,8 @@ const investmentErrorMessage = document.getElementById('investment-error-message
 const STORAGE_KEYS = {
     slot: 'bankingSim.currentSlot',
     screen: 'bankingSim.activeScreen',
-    clientId: 'bankingSim.selectedClientId'
+    clientId: 'bankingSim.selectedClientId',
+    authToken: 'bankingSim.authToken'
 };
 
 function formatCurrency(value) {
@@ -77,7 +90,8 @@ function showScreen(screenId) {
             screen.classList.remove('active');
         }
     });
-    gameHud.style.display = screenId === 'home-screen' ? 'none' : 'flex';
+    const hudVisible = !['home-screen', 'login-screen'].includes(screenId);
+    gameHud.style.display = hudVisible ? 'flex' : 'none';
     localStorage.setItem(STORAGE_KEYS.screen, screenId);
 }
 
@@ -87,8 +101,16 @@ function flashSaveIndicator() {
 }
 
 async function api(path, options = {}) {
-    const response = await fetch(path, options);
+    const token = localStorage.getItem(STORAGE_KEYS.authToken);
+    const headers = new Headers(options.headers || {});
+    if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+    }
+    const response = await fetch(path, { ...options, headers });
     if (!response.ok) {
+        if (response.status === 401) {
+            handleAuthExpired();
+        }
         const message = await response.text();
         throw new Error(message || 'Request failed');
     }
@@ -96,6 +118,61 @@ async function api(path, options = {}) {
         return null;
     }
     return response.json();
+}
+
+function handleAuthExpired() {
+    clearAuthToken();
+    stopPolling();
+    showLoginScreen('Session expired. Please log in again.');
+}
+
+function showLoginScreen(message) {
+    if (message) {
+        loginErrorMessage.textContent = message;
+    } else {
+        loginErrorMessage.textContent = '';
+    }
+    loginPasswordInput.value = '';
+    if (registerPasswordInput) {
+        registerPasswordInput.value = '';
+    }
+    if (registerConfirmInput) {
+        registerConfirmInput.value = '';
+    }
+    showScreen('login-screen');
+    showLoginForm();
+}
+
+function showLoginForm() {
+    if (registerForm) {
+        registerForm.classList.add('hidden');
+    }
+    if (loginForm) {
+        loginForm.classList.remove('hidden');
+    }
+    if (registerErrorMessage) {
+        registerErrorMessage.textContent = '';
+    }
+    loginUsernameInput.focus();
+}
+
+function showRegisterForm() {
+    if (loginForm) {
+        loginForm.classList.add('hidden');
+    }
+    if (registerForm) {
+        registerForm.classList.remove('hidden');
+    }
+    if (loginErrorMessage) {
+        loginErrorMessage.textContent = '';
+    }
+    if (registerUsernameInput) {
+        registerUsernameInput.focus();
+    }
+}
+
+function clearAuthToken() {
+    localStorage.removeItem(STORAGE_KEYS.authToken);
 }
 
 function renderSlotInfo(slot) {
@@ -505,6 +582,98 @@ function startPolling() {
     }, POLL_INTERVAL_MS);
 }
 
+function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+}
+
+async function attemptLogin() {
+    const usernameOrEmail = loginUsernameInput.value.trim();
+    const password = loginPasswordInput.value;
+    if (!usernameOrEmail || !password) {
+        loginErrorMessage.textContent = 'Enter your username/email and password.';
+        return;
+    }
+    loginErrorMessage.textContent = '';
+    try {
+        const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usernameOrEmail, password })
+        });
+        if (!response.ok) {
+            const message = await response.text();
+            throw new Error(message || 'Login failed');
+        }
+        const auth = await response.json();
+        localStorage.setItem(STORAGE_KEYS.authToken, auth.token);
+        loginPasswordInput.value = '';
+        await startAuthenticatedSession();
+    } catch (error) {
+        loginErrorMessage.textContent = error.message || 'Login failed.';
+    }
+}
+
+async function attemptRegister() {
+    const username = registerUsernameInput.value.trim();
+    const email = registerEmailInput.value.trim();
+    const password = registerPasswordInput.value;
+    const confirm = registerConfirmInput.value;
+    if (!username || !email || !password || !confirm) {
+        registerErrorMessage.textContent = 'Fill out all fields to register.';
+        return;
+    }
+    if (password !== confirm) {
+        registerErrorMessage.textContent = 'Passwords do not match.';
+        return;
+    }
+    registerErrorMessage.textContent = '';
+    try {
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password })
+        });
+        if (!response.ok) {
+            const message = await response.text();
+            throw new Error(message || 'Registration failed');
+        }
+        const auth = await response.json();
+        localStorage.setItem(STORAGE_KEYS.authToken, auth.token);
+        registerPasswordInput.value = '';
+        registerConfirmInput.value = '';
+        await startAuthenticatedSession();
+    } catch (error) {
+        registerErrorMessage.textContent = error.message || 'Registration failed.';
+    }
+}
+
+async function startAuthenticatedSession() {
+    const savedSlot = localStorage.getItem(STORAGE_KEYS.slot);
+    const savedScreen = localStorage.getItem(STORAGE_KEYS.screen);
+    const savedClientId = localStorage.getItem(STORAGE_KEYS.clientId);
+    try {
+        if (savedSlot) {
+            const slotId = Number(savedSlot);
+            await loadGame(slotId);
+            if (savedScreen === 'client-view-screen' && savedClientId) {
+                await switchToClientView(savedClientId);
+            } else if (savedScreen === 'investment-view-screen') {
+                await switchToInvestmentView();
+            } else {
+                await switchToBankView();
+            }
+        } else {
+            await updateHomeScreen();
+        }
+        startPolling();
+    } catch (error) {
+        console.error('Failed to restore session', error);
+        handleAuthExpired();
+    }
+}
+
 function handleResize() {
     // Resize charts when window is resized
     if (clientMoneyChart) {
@@ -518,27 +687,34 @@ function handleResize() {
 function initializeApp() {
     initializeCharts();
     quitButton.addEventListener('click', quitGame);
-    const savedSlot = localStorage.getItem(STORAGE_KEYS.slot);
-    const savedScreen = localStorage.getItem(STORAGE_KEYS.screen);
-    const savedClientId = localStorage.getItem(STORAGE_KEYS.clientId);
-    if (savedSlot) {
-        const slotId = Number(savedSlot);
-        loadGame(slotId).then(async () => {
-            if (savedScreen === 'client-view-screen' && savedClientId) {
-                await switchToClientView(savedClientId);
-            } else if (savedScreen === 'investment-view-screen') {
-                await switchToInvestmentView();
-            } else {
-                await switchToBankView();
-            }
-        }).catch(error => {
-            console.error('Failed to restore saved session', error);
-            updateHomeScreen();
+    if (loginForm) {
+        loginForm.addEventListener('submit', event => {
+            event.preventDefault();
+            attemptLogin();
         });
-    } else {
-        updateHomeScreen();
     }
-    startPolling();
+    if (registerForm) {
+        registerForm.addEventListener('submit', event => {
+            event.preventDefault();
+            attemptRegister();
+        });
+    }
+    if (showRegisterButton) {
+        showRegisterButton.addEventListener('click', () => {
+            showRegisterForm();
+        });
+    }
+    if (showLoginButton) {
+        showLoginButton.addEventListener('click', () => {
+            showLoginForm();
+        });
+    }
+    const token = localStorage.getItem(STORAGE_KEYS.authToken);
+    if (token) {
+        startAuthenticatedSession();
+    } else {
+        showLoginScreen();
+    }
     
     // Add resize handler for dynamic resizing
     window.addEventListener('resize', handleResize);

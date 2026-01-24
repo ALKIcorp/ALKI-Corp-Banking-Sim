@@ -24,7 +24,45 @@
                 </div>
             </div>
 
-            <div id="home-screen" class="screen active">
+            <div id="login-screen" class="screen active">
+                <div class="bw-panel flex-grow flex flex-col justify-center items-center">
+                    <h1 class="bw-header mb-4">
+                        <span class="header-icon">🔐</span> Banking Sim Login
+                    </h1>
+                    <form id="login-form" class="auth-form w-full max-w-xs">
+                        <label for="login-username-input" class="bw-label">Username or Email</label>
+                        <input type="text" id="login-username-input" class="bw-input" placeholder="Enter username or email" autocomplete="username">
+                        <label for="login-password-input" class="bw-label">Password</label>
+                        <input type="password" id="login-password-input" class="bw-input" placeholder="Enter password" autocomplete="current-password">
+                        <p id="login-error-message" class="text-red-600 text-xs mt-2 text-center"></p>
+                        <div class="flex justify-center mt-2">
+                            <button class="bw-button" type="submit"><span class="btn-icon">✅</span> Login</button>
+                        </div>
+                        <div class="text-center mt-2">
+                            <button id="show-register-button" class="bw-button" type="button"><span class="btn-icon">🆕</span> Register</button>
+                        </div>
+                    </form>
+                    <form id="register-form" class="auth-form w-full max-w-xs hidden">
+                        <label for="register-username-input" class="bw-label">Username</label>
+                        <input type="text" id="register-username-input" class="bw-input" placeholder="Choose a username" autocomplete="username">
+                        <label for="register-email-input" class="bw-label">Email</label>
+                        <input type="email" id="register-email-input" class="bw-input" placeholder="Enter email address" autocomplete="email">
+                        <label for="register-password-input" class="bw-label">Password</label>
+                        <input type="password" id="register-password-input" class="bw-input" placeholder="Create a password" autocomplete="new-password">
+                        <label for="register-confirm-input" class="bw-label">Confirm Password</label>
+                        <input type="password" id="register-confirm-input" class="bw-input" placeholder="Confirm password" autocomplete="new-password">
+                        <p id="register-error-message" class="text-red-600 text-xs mt-2 text-center"></p>
+                        <div class="flex justify-center mt-2">
+                            <button class="bw-button" type="submit"><span class="btn-icon">📝</span> Create Account</button>
+                        </div>
+                        <div class="text-center mt-2">
+                            <button id="show-login-button" class="bw-button" type="button"><span class="btn-icon">↩</span> Back to Login</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="home-screen" class="screen">
                 <div class="bw-panel flex-grow flex flex-col justify-center items-center">
                     <h1 class="bw-header mb-4">
                         <span class="header-icon">🏦</span> Banking Sim <span class="header-icon">🏦</span>

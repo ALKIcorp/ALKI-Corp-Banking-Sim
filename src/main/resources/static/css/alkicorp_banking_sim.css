@@ -218,6 +218,11 @@
             text-transform: uppercase;
         }
 
+        .auth-form {
+            width: 100%;
+        }
+        .hidden { display: none; }
+
         /* --- HUD --- */
         .hud {
             display: flex;

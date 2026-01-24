@@ -1278,3 +1278,58 @@
 2026-01-23 18:25:22.494 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.103 s, sync=0.001 s, total=0.106 s; sync files=2, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=279 kB; lsn=0/26F29C8, redo lsn=0/26F2970
 2026-01-23 18:40:22.504 EST [10787] LOG:  checkpoint starting: time
 2026-01-23 18:40:22.615 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.104 s, sync=0.001 s, total=0.112 s; sync files=2, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=251 kB; lsn=0/26F2EA8, redo lsn=0/26F2E50
+2026-01-23 19:35:24.169 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 19:35:24.380 EST [10787] LOG:  checkpoint complete: wrote 2 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.207 s, sync=0.001 s, total=0.217 s; sync files=2, longest=0.001 s, average=0.001 s; distance=13 kB, estimate=228 kB; lsn=0/26F65D8, redo lsn=0/26F6580
+2026-01-23 19:38:57.695 EST [90854] ERROR:  column "username" of relation "users" does not exist at character 167
+2026-01-23 19:38:57.695 EST [90854] STATEMENT:  -- Roles
+	INSERT INTO roles (name)
+	VALUES ('ROLE_USER'), ('ROLE_ADMIN')
+	ON CONFLICT (name) DO NOTHING;
+	
+	-- Admin user (replace email + bcrypt hash)
+	INSERT INTO users (username, email, password_hash, created_at)
+	SELECT 'admin', 'admin@alkicorp.local', '$2a$10$REPLACE_WITH_BCRYPT_HASH', NOW()
+	WHERE NOT EXISTS (
+	  SELECT 1 FROM users
+	  WHERE username = 'admin' OR email = 'admin@alkicorp.local'
+	);
+	
+	-- Admin -> ROLE_ADMIN
+	WITH user_row AS (
+	  SELECT id FROM users WHERE username = 'admin'
+	),
+	role_row AS (
+	  SELECT id FROM roles WHERE name = 'ROLE_ADMIN'
+	)
+	INSERT INTO user_roles (user_id, role_id)
+	SELECT user_row.id, role_row.id
+	FROM user_row, role_row
+	ON CONFLICT DO NOTHING;
+	
+	-- Optional: Admin -> ROLE_USER
+	WITH user_row AS (
+	  SELECT id FROM users WHERE username = 'admin'
+	),
+	role_row AS (
+	  SELECT id FROM roles WHERE name = 'ROLE_USER'
+	)
+	INSERT INTO user_roles (user_id, role_id)
+	SELECT user_row.id, role_row.id
+	FROM user_row, role_row
+	ON CONFLICT DO NOTHING;
+2026-01-23 19:40:24.383 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 19:40:25.114 EST [10787] LOG:  checkpoint complete: wrote 7 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.723 s, sync=0.002 s, total=0.732 s; sync files=8, longest=0.001 s, average=0.001 s; distance=15 kB, estimate=206 kB; lsn=0/26FA568, redo lsn=0/26FA510
+2026-01-23 19:42:33.066 EST [90854] ERROR:  column "name" of relation "users" does not exist at character 20
+2026-01-23 19:42:33.066 EST [90854] STATEMENT:  INSERT INTO users (name)
+	SELECT 'admin'
+	WHERE NOT EXISTS (
+	  SELECT 1 FROM users WHERE name = 'admin'
+	);
+2026-01-23 19:45:24.117 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 19:45:25.256 EST [10787] LOG:  checkpoint complete: wrote 11 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.132 s, sync=0.002 s, total=1.139 s; sync files=7, longest=0.001 s, average=0.001 s; distance=39 kB, estimate=190 kB; lsn=0/27044D0, redo lsn=0/2704478
+2026-01-23 19:50:24.258 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 19:50:24.366 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.103 s, sync=0.001 s, total=0.111 s; sync files=1, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=171 kB; lsn=0/2704768, redo lsn=0/2704710
+2026-01-23 20:00:24.369 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 20:00:24.478 EST [10787] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.102 s, sync=0.001 s, total=0.110 s; sync files=2, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=154 kB; lsn=0/2704C68, redo lsn=0/2704C10
+2026-01-23 20:05:24.480 EST [10787] LOG:  checkpoint starting: time
+2026-01-23 20:05:27.138 EST [10787] LOG:  checkpoint complete: wrote 26 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=2.652 s, sync=0.002 s, total=2.659 s; sync files=21, longest=0.001 s, average=0.001 s; distance=33 kB, estimate=142 kB; lsn=0/270E368, redo lsn=0/270D2F0
