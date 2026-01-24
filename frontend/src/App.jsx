@@ -48,7 +48,6 @@ function App() {
   const [investmentError, setInvestmentError] = useState('')
   const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
-  const [showRegisterConfirm, setShowRegisterConfirm] = useState(false)
 
   const hudMenuRef = useRef(null)
   const saveTimerRef = useRef(null)
@@ -662,20 +661,11 @@ function App() {
                 value={registerPassword}
                 onChange={(event) => setRegisterPassword(event.target.value)}
               />
-              <label className="password-toggle">
-                <input
-                  type="checkbox"
-                  className="bw-checkbox"
-                  checked={showRegisterPassword}
-                  onChange={(event) => setShowRegisterPassword(event.target.checked)}
-                />
-                <span>Show password</span>
-              </label>
               <label htmlFor="register-confirm-input" className="bw-label">
                 Confirm Password
               </label>
               <input
-                type={showRegisterConfirm ? 'text' : 'password'}
+                type={showRegisterPassword ? 'text' : 'password'}
                 id="register-confirm-input"
                 className="bw-input"
                 placeholder="Confirm password"
@@ -687,8 +677,8 @@ function App() {
                 <input
                   type="checkbox"
                   className="bw-checkbox"
-                  checked={showRegisterConfirm}
-                  onChange={(event) => setShowRegisterConfirm(event.target.checked)}
+                  checked={showRegisterPassword}
+                  onChange={(event) => setShowRegisterPassword(event.target.checked)}
                 />
                 <span>Show password</span>
               </label>

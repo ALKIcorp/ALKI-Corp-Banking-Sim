@@ -9,23 +9,22 @@ This guide covers how to run the Banking Sim API locally on **Windows** and **Ma
 - **Java 17** 
 - **PostgreSQL 14** 
 - **Maven 3.9+** 
+- **Node.js 18+ (npm included)**
 
 ---
 
 ## 2. Run the environment
 
-### Windows
+### Start PostgreSQL
 
-1. **Start PostgreSQL**
-   - In **Command Prompt (Run as administrator):**  
-     `net start postgresql-x64-14`  
-     (Replace `14` with your PostgreSQL version if different.)
+**Windows**
+- In **Command Prompt (Run as administrator):**  
+  `net start postgresql-x64-14`  
+  (Replace `14` with your PostgreSQL version if different.)
 
-     ### Mac
-
-1. **Start PostgreSQL**
-   - In **Terminal:**  
-     `brew services start postgresql`
+**Mac**
+- In **Terminal:**  
+  `brew services start postgresql`
 
 ---
 
@@ -37,7 +36,41 @@ This guide covers how to run the Banking Sim API locally on **Windows** and **Ma
 
 ---
 
-## 3. Run API Read-Only Scripts
+## 3. Run the full app (API + Frontend)
+
+This starts both the backend (`mvn spring-boot:run`) and frontend (`npm run dev`) and opens the Vite URL in your default browser. The script also runs `npm install` the first time if needed.
+Press `Ctrl+C` to stop the frontend; the script will also stop the backend process.
+
+### Windows (PowerShell)
+```
+.\Scripts\Windows\dev.ps1
+```
+
+### Mac (Bash/Terminal)
+```
+chmod +x Scripts/MacOS/dev.sh
+./Scripts/MacOS/dev.sh
+```
+
+### Manual method (if script fails)
+
+**Terminal 1 (backend)**
+```
+mvn spring-boot:run
+```
+
+**Terminal 2 (frontend)**
+```
+cd frontend
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite (usually `http://localhost:5173`).
+
+---
+
+## 4. Run API Read-Only Scripts
 
 Scripts are provided for making GET (read-only) API calls.
 
@@ -65,7 +98,7 @@ For more details, see [Scripts/README_Scripts.md](Scripts/README_Scripts.md).
 
 ---
 
-## 4. Build & Run (Maven)
+## 5. Build & Run (Maven)
 
 From the repo root:
 
