@@ -43,6 +43,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/",
                     "/index.html",
+                    "/assets/**",
+                    "/vite.svg",
                     "/banking/**",
                     "/css/**",
                     "/js/**",

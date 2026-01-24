@@ -37,3 +37,7 @@ out/
 
 ### Documentation ###
 docs/
+
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
