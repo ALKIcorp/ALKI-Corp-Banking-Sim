@@ -222,6 +222,23 @@
             width: 100%;
         }
         .hidden { display: none; }
+        .password-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 2px 0 8px;
+            font-size: 9px;
+            color: var(--color-text-medium);
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+        }
+        .bw-checkbox {
+            width: 12px;
+            height: 12px;
+            accent-color: var(--color-accent-blue);
+            cursor: pointer;
+        }
 
         /* --- HUD --- */
         .hud {

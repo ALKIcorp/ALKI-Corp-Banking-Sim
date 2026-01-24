@@ -38,6 +38,10 @@
                         <input type="text" id="login-username-input" class="bw-input" placeholder="Enter username or email" autocomplete="username">
                         <label for="login-password-input" class="bw-label">Password</label>
                         <input type="password" id="login-password-input" class="bw-input" placeholder="Enter password" autocomplete="current-password">
+                        <label class="password-toggle">
+                            <input type="checkbox" id="login-password-toggle" class="bw-checkbox">
+                            <span>Show password</span>
+                        </label>
                         <p id="login-error-message" class="text-red-600 text-xs mt-2 text-center"></p>
                         <div class="flex justify-center mt-2">
                             <button class="bw-button" type="submit"><span class="btn-icon">✅</span> Login</button>
@@ -53,8 +57,16 @@
                         <input type="email" id="register-email-input" class="bw-input" placeholder="Enter email address" autocomplete="email">
                         <label for="register-password-input" class="bw-label">Password</label>
                         <input type="password" id="register-password-input" class="bw-input" placeholder="Create a password" autocomplete="new-password">
+                        <label class="password-toggle">
+                            <input type="checkbox" id="register-password-toggle" class="bw-checkbox">
+                            <span>Show password</span>
+                        </label>
                         <label for="register-confirm-input" class="bw-label">Confirm Password</label>
                         <input type="password" id="register-confirm-input" class="bw-input" placeholder="Confirm password" autocomplete="new-password">
+                        <label class="password-toggle">
+                            <input type="checkbox" id="register-confirm-toggle" class="bw-checkbox">
+                            <span>Show password</span>
+                        </label>
                         <p id="register-error-message" class="text-red-600 text-xs mt-2 text-center"></p>
                         <div class="flex justify-center mt-2">
                             <button class="bw-button" type="submit"><span class="btn-icon">📝</span> Create Account</button>

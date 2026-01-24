@@ -24,13 +24,16 @@ const quitButton = document.getElementById('quit-button');
 const loginForm = document.getElementById('login-form');
 const loginUsernameInput = document.getElementById('login-username-input');
 const loginPasswordInput = document.getElementById('login-password-input');
+const loginPasswordToggle = document.getElementById('login-password-toggle');
 const loginErrorMessage = document.getElementById('login-error-message');
 const showRegisterButton = document.getElementById('show-register-button');
 const registerForm = document.getElementById('register-form');
 const registerUsernameInput = document.getElementById('register-username-input');
 const registerEmailInput = document.getElementById('register-email-input');
 const registerPasswordInput = document.getElementById('register-password-input');
+const registerPasswordToggle = document.getElementById('register-password-toggle');
 const registerConfirmInput = document.getElementById('register-confirm-input');
+const registerConfirmToggle = document.getElementById('register-confirm-toggle');
 const registerErrorMessage = document.getElementById('register-error-message');
 const showLoginButton = document.getElementById('show-login-button');
 
@@ -141,6 +144,7 @@ function showLoginScreen(message) {
     if (registerConfirmInput) {
         registerConfirmInput.value = '';
     }
+    resetPasswordToggles();
     showScreen('login-screen');
     showLoginForm();
 }
@@ -155,6 +159,7 @@ function showLoginForm() {
     if (registerErrorMessage) {
         registerErrorMessage.textContent = '';
     }
+    resetPasswordToggles();
     loginUsernameInput.focus();
 }
 
@@ -168,9 +173,29 @@ function showRegisterForm() {
     if (loginErrorMessage) {
         loginErrorMessage.textContent = '';
     }
+    resetPasswordToggles();
     if (registerUsernameInput) {
         registerUsernameInput.focus();
     }
+}
+
+function setPasswordVisibility(input, toggle, visible) {
+    if (!input || !toggle) return;
+    input.type = visible ? 'text' : 'password';
+    toggle.checked = visible;
+}
+
+function resetPasswordToggles() {
+    setPasswordVisibility(loginPasswordInput, loginPasswordToggle, false);
+    setPasswordVisibility(registerPasswordInput, registerPasswordToggle, false);
+    setPasswordVisibility(registerConfirmInput, registerConfirmToggle, false);
+}
+
+function bindPasswordToggle(input, toggle) {
+    if (!input || !toggle) return;
+    toggle.addEventListener('change', () => {
+        input.type = toggle.checked ? 'text' : 'password';
+    });
 }
 
 function decodeJwtPayload(token) {
@@ -768,6 +793,9 @@ function initializeApp() {
             showLoginForm();
         });
     }
+    bindPasswordToggle(loginPasswordInput, loginPasswordToggle);
+    bindPasswordToggle(registerPasswordInput, registerPasswordToggle);
+    bindPasswordToggle(registerConfirmInput, registerConfirmToggle);
     const token = localStorage.getItem(STORAGE_KEYS.authToken);
     if (token) {
         startAuthenticatedSession();
