@@ -22,9 +22,19 @@
                     <button id="logout-button" class="bw-button">
                         <span class="btn-icon">🔒</span> Logout
                     </button>
-                    <button id="quit-button" class="bw-button">
-                        <span class="btn-icon">✖</span> Quit
-                    </button>
+                    <div id="hud-menu" class="hud-menu">
+                        <button id="hud-menu-button" class="bw-button" type="button" aria-expanded="false" aria-haspopup="true">
+                            <span class="btn-icon">📋</span> Menu
+                        </button>
+                        <div id="hud-menu-panel" class="hud-menu-panel" role="menu">
+                            <button id="hud-menu-home" class="bw-button hud-menu-item" type="button" role="menuitem">
+                                <span class="btn-icon">🏦</span> Home
+                            </button>
+                            <button id="hud-menu-choose-save" class="bw-button hud-menu-item" type="button" role="menuitem">
+                                <span class="btn-icon">💾</span> Choose save file
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

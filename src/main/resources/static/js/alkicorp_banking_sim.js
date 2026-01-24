@@ -20,7 +20,11 @@ const hudDate = document.getElementById('hud-date');
 const saveIndicator = document.getElementById('save-indicator');
 const logoutButton = document.getElementById('logout-button');
 const homeLogoutButton = document.getElementById('home-logout-button');
-const quitButton = document.getElementById('quit-button');
+const hudMenu = document.getElementById('hud-menu');
+const hudMenuButton = document.getElementById('hud-menu-button');
+const hudMenuPanel = document.getElementById('hud-menu-panel');
+const hudMenuHome = document.getElementById('hud-menu-home');
+const hudMenuChooseSave = document.getElementById('hud-menu-choose-save');
 const loginForm = document.getElementById('login-form');
 const loginUsernameInput = document.getElementById('login-username-input');
 const loginPasswordInput = document.getElementById('login-password-input');
@@ -663,6 +667,37 @@ function stopPolling() {
     pollTimer = null;
 }
 
+function closeHudMenu() {
+    if (!hudMenuPanel || !hudMenuButton) return;
+    hudMenuPanel.classList.remove('open');
+    hudMenuButton.setAttribute('aria-expanded', 'false');
+}
+
+function toggleHudMenu(event) {
+    if (!hudMenuPanel || !hudMenuButton) return;
+    if (event) {
+        event.stopPropagation();
+    }
+    const shouldOpen = !hudMenuPanel.classList.contains('open');
+    if (shouldOpen) {
+        hudMenuPanel.classList.add('open');
+        hudMenuButton.setAttribute('aria-expanded', 'true');
+    } else {
+        closeHudMenu();
+    }
+}
+
+function handleHudMenuAction(action) {
+    closeHudMenu();
+    if (action === 'home') {
+        switchToBankView();
+        return;
+    }
+    if (action === 'choose-save') {
+        quitGame();
+    }
+}
+
 async function attemptLogin() {
     const usernameOrEmail = loginUsernameInput.value.trim();
     const password = loginPasswordInput.value;
@@ -770,7 +805,27 @@ function initializeApp() {
     if (homeLogoutButton) {
         homeLogoutButton.addEventListener('click', logout);
     }
-    quitButton.addEventListener('click', quitGame);
+    if (hudMenuButton) {
+        hudMenuButton.addEventListener('click', toggleHudMenu);
+    }
+    if (hudMenuHome) {
+        hudMenuHome.addEventListener('click', () => handleHudMenuAction('home'));
+    }
+    if (hudMenuChooseSave) {
+        hudMenuChooseSave.addEventListener('click', () => handleHudMenuAction('choose-save'));
+    }
+    if (hudMenu) {
+        document.addEventListener('click', event => {
+            if (!hudMenu.contains(event.target)) {
+                closeHudMenu();
+            }
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                closeHudMenu();
+            }
+        });
+    }
     if (loginForm) {
         loginForm.addEventListener('submit', event => {
             event.preventDefault();
