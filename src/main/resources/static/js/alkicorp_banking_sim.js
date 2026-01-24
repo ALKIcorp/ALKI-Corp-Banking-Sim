@@ -18,6 +18,8 @@ const gameHud = document.getElementById('game-hud');
 const hudMode = document.getElementById('hud-mode');
 const hudDate = document.getElementById('hud-date');
 const saveIndicator = document.getElementById('save-indicator');
+const logoutButton = document.getElementById('logout-button');
+const homeLogoutButton = document.getElementById('home-logout-button');
 const quitButton = document.getElementById('quit-button');
 const loginForm = document.getElementById('login-form');
 const loginUsernameInput = document.getElementById('login-username-input');
@@ -171,8 +173,56 @@ function showRegisterForm() {
     }
 }
 
+function decodeJwtPayload(token) {
+    const parts = token.split('.');
+    if (parts.length < 2) {
+        return null;
+    }
+    const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    try {
+        return JSON.parse(atob(padded));
+    } catch (error) {
+        console.warn('Failed to decode auth token payload', error);
+        return null;
+    }
+}
+
+function getCurrentUserLabel() {
+    const token = localStorage.getItem(STORAGE_KEYS.authToken);
+    if (!token) {
+        return null;
+    }
+    const payload = decodeJwtPayload(token);
+    if (!payload || !payload.sub) {
+        return null;
+    }
+    return payload.sub;
+}
+
+function updateUserCredentialDisplays() {
+    const label = getCurrentUserLabel();
+    document.querySelectorAll('.user-credential').forEach(element => {
+        if (label) {
+            element.textContent = `User: ${label}`;
+            element.classList.remove('hidden');
+        } else {
+            element.textContent = '';
+            element.classList.add('hidden');
+        }
+    });
+}
+
 function clearAuthToken() {
     localStorage.removeItem(STORAGE_KEYS.authToken);
+    updateUserCredentialDisplays();
+}
+
+function logout() {
+    clearAuthToken();
+    stopPolling();
+    quitGame();
+    showLoginScreen();
 }
 
 function renderSlotInfo(slot) {
@@ -608,6 +658,7 @@ async function attemptLogin() {
         }
         const auth = await response.json();
         localStorage.setItem(STORAGE_KEYS.authToken, auth.token);
+        updateUserCredentialDisplays();
         loginPasswordInput.value = '';
         await startAuthenticatedSession();
     } catch (error) {
@@ -641,6 +692,7 @@ async function attemptRegister() {
         }
         const auth = await response.json();
         localStorage.setItem(STORAGE_KEYS.authToken, auth.token);
+        updateUserCredentialDisplays();
         registerPasswordInput.value = '';
         registerConfirmInput.value = '';
         await startAuthenticatedSession();
@@ -654,6 +706,7 @@ async function startAuthenticatedSession() {
     const savedScreen = localStorage.getItem(STORAGE_KEYS.screen);
     const savedClientId = localStorage.getItem(STORAGE_KEYS.clientId);
     try {
+        updateUserCredentialDisplays();
         if (savedSlot) {
             const slotId = Number(savedSlot);
             await loadGame(slotId);
@@ -686,6 +739,12 @@ function handleResize() {
 
 function initializeApp() {
     initializeCharts();
+    if (logoutButton) {
+        logoutButton.addEventListener('click', logout);
+    }
+    if (homeLogoutButton) {
+        homeLogoutButton.addEventListener('click', logout);
+    }
     quitButton.addEventListener('click', quitGame);
     if (loginForm) {
         loginForm.addEventListener('submit', event => {
