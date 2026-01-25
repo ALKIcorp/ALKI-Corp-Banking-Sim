@@ -1,8 +1,116 @@
+
+# Start from here to run environment correctly. 
+Simple guide is for runtime instructions. Further down in the `README` there is a `Full Guide` with all the extra details about the project like (postman endpoints, commands, details).
+
+
+# Simple Guide
+
+## pgAdmin setup. restore from banking-sim-api/backup_database/1778145 <--This file
+
+**Create the database and set credentials**
+   - Open **pgAdmin** and connect to your server.
+   - Create an empty database (default name: `1778145`).
+   - Default credentials (from `src/main/resources/application.properties`):
+     - **Username:** `alkicorp`
+     - **Password:** `password`
+     - Update these via `spring.datasource.username` / `spring.datasource.password` if needed.
+   - Liquibase will create/update the schema automatically on app startup.
+   - If you are restoring a provided backup, use the `.backup` file in **pgAdmin → Restore**.
+
+
+
+## Start postgres (windows user)
+Command prompt:
+```
+net start postgresql-x64-14
+```
+
+
+## Runtime script to start backend + frontend + browser open. (This is how to automatically run program)
+Powershell:
+```
+.\Scripts\Windows\dev.ps1
+```
+
+
+## Sign up for an account. 
+
+### **Pre-existing admin accounts:**
+
+### Admin user (log in this one to add/edit property market.)
+user:
+```
+add
+```
+password:
+```
+password
+```
+
+
+### Or you can register your own and add new clients. 
+
+Each save file is unique to the user logged in. View the `Actions index` in `Full Guide` for list of user interactions we can perform in this program.  
+
+
+
+
+## Postman import code - For a simple GET request connection with endpoints.
+
+### Step 1: Find JWT token. 
+Get a token (login)
+
+Create a Postman request (one-time per session):
+Method: POST
+URL: 
+```
+{{baseUrl}}/auth/login
+```
+Body → raw → JSON:
+```
+{  
+   "usernameOrEmail": "add",  
+   "password": "password"
+}
+```
+## Replace username and password with the one you want.
+
+Send it. You’ll get back JSON like:
+```
+{  
+   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....",  
+   "tokenType": "Bearer",  "adminStatus": true
+}
+```
+
+## Copy "token" value for JWT
+
+This token will be needed for the `Authorization: Bearer {{token}}` **Header** in the list of endpoints below in the document inside of `API Requests`.
+
+
+
+
+## ///////////// END OF SIMPLE GUIDE /////////////
+
+
+
+
+
+
+
+
+# //////////////////////////////////////////////
+
+
+
+# //////////// START OF FULL GUIDE //////////////
+
+
+
 # Banking Sim API – Setup & Run Guide
 
 This guide covers how to run the Banking Sim API locally on **Windows** and **Mac**, connect with **pgAdmin**, and call the API with **Postman**.
 
----
 
 ## 1. Prerequisites
 
@@ -11,7 +119,9 @@ This guide covers how to run the Banking Sim API locally on **Windows** and **Ma
 - **Maven 3.9+** 
 - **Node.js 18+ (npm included)**
 
----
+
+
+
 
 ## 2. Run the environment
 
@@ -38,7 +148,10 @@ This guide covers how to run the Banking Sim API locally on **Windows** and **Ma
    - Liquibase will create/update the schema automatically on app startup.
    - If you are restoring a provided backup, use the `.backup` file in **pgAdmin → Restore**.
 
----
+
+
+
+
 
 ## 3. Run the full app (API + Frontend)
 
@@ -70,37 +183,11 @@ npm run dev
 
 Open the local URL printed by Vite (usually `http://localhost:5173`).
 
----
 
-## 4. Run API Read-Only Scripts
 
-Scripts are provided for making GET (read-only) API calls.
 
-### Windows (PowerShell)
 
-1. From the repo root, run:
-   ```
-   powershell -ExecutionPolicy Bypass -File .\Scripts\Windows\api-readonly.ps1
-   or
-   .\Scripts\Windows\api-readonly.ps1
-   ```
-
-### Mac (Bash/Terminal)
-
-1. From the repo root, make the script executable:
-   ```
-   chmod +x Scripts/MacOS/api-readonly.sh
-   ```
-2. Run it:
-   ```
-   ./Scripts/MacOS/api-readonly.sh
-   ```
-
-For more details, see [Scripts/README_Scripts.md](Scripts/README_Scripts.md).
-
----
-
-## 5. Build & Run (Maven)
+## 4. Build & Run (Maven)
 
 From the repo root:
 
@@ -112,60 +199,512 @@ mvn test
 mvn spring-boot:run
 ```
 
----
+
+
+
+
+
+## 5. Actions index
+
+Things a user can do in the app (right now):
+```
+Create an account.
+Log in and get access to your own save data (each user is separate).
+View the list of simulation slots (1–3).
+Start/reset a slot to begin a run.
+View the bank’s current state for a slot.
+View all clients in a slot.
+Create a new client in a slot.
+View one client’s details (balances and card info).
+View a client’s transaction history.
+View a client’s owned properties.
+Deposit money into a client’s account.
+Withdraw money from a client’s account.
+Fund a client’s mortgage down payment.
+View available property/products in a slot.
+View details for a specific property/product.
+Submit a loan request for a client.
+View the list of loans in a slot.
+Submit a mortgage request for a client (choose a property, down payment, and term).
+View the list of mortgages in a slot.
+View the S&P 500 investment state.
+Invest money into the S&P 500.
+Divest money from the S&P 500.
+View client distribution chart data.
+View activity chart data.
+```
+Admin-only actions (if your teacher logs in as admin):
+```
+Approve or reject loans.
+Approve or reject mortgages.
+Update the mortgage interest rate for a slot.
+Create new properties/products.
+Update existing properties/products (including status).
+Delete properties/products.
+View “all products” (not just available ones).
+```
+
+
+
+
+
+
+
+
+
 
 ## API Requests
 
-### Authentication
-- POST /auth/register — create a user (body: RegisterRequest { username, email, password, adminStatus? })
-- POST /auth/login — login and receive JWT (body: LoginRequest { usernameOrEmail, password })
 
-Include the JWT in requests to protected endpoints:
-```
-Authorization: Bearer <token>
-```
+
+### Authentication
+**POST**  
+`http://localhost:5173/auth/register`
+
+**Headers**
+- `Content-Type: application/json`
+
+**Body**
+- `username`: `{{username}}`
+- `email`: `{{email}}`
+- `password`: `{{password}}`
+- `adminStatus`: `false`
+
+**Description**
+Create a new user account. Returns an `AuthResponse` (including a JWT token you can reuse as `{{token}}`).
+
+**POST**  
+`http://localhost:5173/auth/login`
+
+**Headers**
+- `Content-Type: application/json`
+
+**Body**
+- `usernameOrEmail`: `{{usernameOrEmail}}`
+- `password`: `{{password}}`
+
+**Description**
+Login and receive an `AuthResponse` containing a JWT (save it as `{{token}}` for protected endpoints).
+
+Include the JWT in requests to protected endpoints:  
+`Authorization: Bearer {{token}}`
+
+
 
 ### Slots
-- GET /api/slots — list slot summaries
-- POST /api/slots/{slotId}/start — reset and start a slot
-- GET /api/slots/{slotId}/bank — get bank state for a slot
-- PUT /api/slots/{slotId}/mortgage-rate — update mortgage rate (admin)
+**GET**  
+`http://localhost:5173/api/slots`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List slot summaries (available slots in the simulation).
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/start`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Reset and start the given slot, returning the new bank state for that slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/bank`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Fetch the current bank state for the given slot.
+
+**PUT**  
+`http://localhost:5173/api/slots/{{slotId}}/mortgage-rate`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `mortgageRate`: `{{mortgageRate}}`
+
+**Description**
+Update the mortgage interest rate for the slot (ADMIN only). Returns the updated bank state.
+
+
+
 
 ### Clients
-- GET /api/slots/{slotId}/clients — list clients in a slot
-- POST /api/slots/{slotId}/clients — create client (body: CreateClientRequest { name })
-- GET /api/slots/{slotId}/clients/{clientId} — get client details
-- GET /api/slots/{slotId}/clients/{clientId}/transactions — list client transactions
-- GET /api/slots/{slotId}/clients/{clientId}/properties — list owned properties
-- POST /api/slots/{slotId}/clients/{clientId}/deposit — deposit funds (body: MoneyRequest { amount })
-- POST /api/slots/{slotId}/clients/{clientId}/withdraw — withdraw funds (body: MoneyRequest { amount })
-- POST /api/slots/{slotId}/clients/{clientId}/mortgage-funding — fund mortgage down payment (body: MoneyRequest { amount })
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/clients`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List all clients in the given slot.
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/clients`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `name`: `{{name}}`
+
+**Description**
+Create a new client in the given slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Get details for a single client in the given slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}/transactions`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List all transactions for the client in the given slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}/properties`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List all products/properties currently owned by the client in the given slot.
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}/deposit`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `amount`: `{{amount}}`
+
+**Description**
+Deposit funds into the client’s checking account (creates a transaction).
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}/withdraw`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `amount`: `{{amount}}`
+
+**Description**
+Withdraw funds from the client’s checking account (creates a transaction).
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}/mortgage-funding`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `amount`: `{{amount}}`
+
+**Description**
+Fund a mortgage down payment for the client (creates a transaction).
+
+
+
 
 ### Products
-- GET /api/slots/{slotId}/products — list available products
-- GET /api/slots/{slotId}/products/all — list all products (admin)
-- GET /api/slots/{slotId}/products/{productId} — get product details
-- POST /api/slots/{slotId}/products — create product (admin, body: CreateProductRequest)
-- PUT /api/slots/{slotId}/products/{productId} — update product (admin, body: UpdateProductRequest)
-- DELETE /api/slots/{slotId}/products/{productId} — delete product (admin)
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/products`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List available products (properties) for purchase in the given slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/products/all`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List all products in the slot (ADMIN only), including non-available statuses.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/products/{{productId}}`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Fetch details for a single product in the given slot.
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/products`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `name`: `{{name}}`
+- `price`: `{{price}}`
+- `description`: `{{description}}`
+- `rooms`: `{{rooms}}`
+- `sqft2`: `{{sqft2}}`
+- `imageUrl`: `{{imageUrl}}`
+
+**Description**
+Create a new product in the slot (ADMIN only).
+
+**PUT**  
+`http://localhost:5173/api/slots/{{slotId}}/products/{{productId}}`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `name`: `{{name}}`
+- `price`: `{{price}}`
+- `description`: `{{description}}`
+- `rooms`: `{{rooms}}`
+- `sqft2`: `{{sqft2}}`
+- `imageUrl`: `{{imageUrl}}`
+- `status`: `{{status}}`
+
+**Description**
+Update an existing product (ADMIN only). `status` is a string matching the product status enum.
+
+**DELETE**  
+`http://localhost:5173/api/slots/{{slotId}}/products/{{productId}}`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Delete a product from the slot (ADMIN only).
+
+
+
 
 ### Loans
-- POST /api/slots/{slotId}/clients/{clientId}/loans — create loan (body: LoanRequest { amount, termYears })
-- GET /api/slots/{slotId}/loans — list loans
-- POST /api/slots/{slotId}/loans/{loanId}/approve — approve loan (admin)
-- POST /api/slots/{slotId}/loans/{loanId}/reject — reject loan (admin)
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}/loans`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `amount`: `{{amount}}`
+- `termYears`: `{{termYears}}`
+
+**Description**
+Create a loan request for a client in the given slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/loans`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List all loans in the given slot.
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/loans/{{loanId}}/approve`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Approve a loan in the given slot (ADMIN only).
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/loans/{{loanId}}/reject`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Reject a loan in the given slot (ADMIN only).
+
+
+
 
 ### Mortgages
-- POST /api/slots/{slotId}/clients/{clientId}/mortgages — create mortgage (body: MortgageRequest { productId, downPayment, termYears })
-- GET /api/slots/{slotId}/mortgages — list mortgages
-- POST /api/slots/{slotId}/mortgages/{mortgageId}/approve — approve mortgage (admin)
-- POST /api/slots/{slotId}/mortgages/{mortgageId}/reject — reject mortgage (admin)
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/clients/{{clientId}}/mortgages`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `productId`: `{{productId}}`
+- `downPayment`: `{{downPayment}}`
+- `termYears`: `{{termYears}}`
+
+**Description**
+Create a mortgage request for a client in the given slot, tied to a specific product/property.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/mortgages`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+List all mortgages in the given slot.
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/mortgages/{{mortgageId}}/approve`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Approve a mortgage in the given slot (ADMIN only).
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/mortgages/{{mortgageId}}/reject`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Reject a mortgage in the given slot (ADMIN only).
+
+
 
 
 ### Investments & Charts
-- GET /api/slots/{slotId}/investments/sp500 — get SP500 investment state
-- POST /api/slots/{slotId}/investments/sp500/invest — invest in SP500 (body: MoneyRequest { amount })
-- POST /api/slots/{slotId}/investments/sp500/divest — divest from SP500 (body: MoneyRequest { amount })
-- GET /api/slots/{slotId}/charts/clients — client distribution chart data
-- GET /api/slots/{slotId}/charts/activity — activity chart data
-     
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/investments/sp500`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Get the current SP500 investment state for the slot (cash, invested amount, price, and schedule).
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/investments/sp500/invest`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `amount`: `{{amount}}`
+
+**Description**
+Invest cash into the SP500 for the given slot.
+
+**POST**  
+`http://localhost:5173/api/slots/{{slotId}}/investments/sp500/divest`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+- `Content-Type: application/json`
+
+**Body**
+- `amount`: `{{amount}}`
+
+**Description**
+Divest (sell) SP500 holdings back into cash for the given slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/charts/clients`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Get client distribution chart data for the slot.
+
+**GET**  
+`http://localhost:5173/api/slots/{{slotId}}/charts/activity`
+
+**Headers**
+- `Authorization: Bearer {{token}}`
+
+**Body**
+- none
+
+**Description**
+Get activity chart data for the slot.
