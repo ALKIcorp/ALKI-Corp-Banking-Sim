@@ -61,6 +61,7 @@ public class AuthService {
         user.setEmail(request.getEmail().trim());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRoles(Set.of(userRole));
+        user.setAdminStatus(request.isAdminStatus());
 
         userRepository.save(user);
 
@@ -70,7 +71,7 @@ public class AuthService {
             userRole != null ? Set.of(() -> userRole.getName()) : Set.of()
         );
         String token = jwtService.generateToken(userDetails);
-        return new AuthResponse(token, "Bearer");
+        return new AuthResponse(token, "Bearer", user.isAdminStatus());
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -79,8 +80,11 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.getUsernameOrEmail(), request.getPassword())
             );
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            boolean adminStatus = userRepository.findByUsernameIgnoreCase(userDetails.getUsername())
+                .map(User::isAdminStatus)
+                .orElse(false);
             String token = jwtService.generateToken(userDetails);
-            return new AuthResponse(token, "Bearer");
+            return new AuthResponse(token, "Bearer", adminStatus);
         } catch (BadCredentialsException ex) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }

@@ -570,6 +570,7 @@ body {
 .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
 .font-semibold { font-weight: 600; }
 .text-red-600 { color: var(--color-accent-red); }
+.text-green-600 { color: var(--color-accent-green); }
 .text-gray-500 { color: var(--color-text-medium); }
 .text-gray-600 { color: #9ca3af; }
 .text-center { text-align: center; }

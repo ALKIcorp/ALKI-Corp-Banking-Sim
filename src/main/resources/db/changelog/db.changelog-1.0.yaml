@@ -581,3 +581,26 @@ databaseChangeLog:
                   name: user_id
               - column:
                   name: slot_id
+  - changeSet:
+      id: 15-add-admin-status-to-users
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: users
+          - not:
+              - columnExists:
+                  tableName: users
+                  columnName: admin_status
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: admin_status
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

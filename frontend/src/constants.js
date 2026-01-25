@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   screen: 'bankingSim.activeScreen',
   clientId: 'bankingSim.selectedClientId',
   authToken: 'bankingSim.authToken',
+  adminStatus: 'bankingSim.adminStatus',
 }
 
 export const API_BASE = '/api/slots'

@@ -19,4 +19,6 @@ public class RegisterRequest {
     @NotBlank
     @Size(min = 8, max = 120)
     private String password;
+
+    private boolean adminStatus;
 }

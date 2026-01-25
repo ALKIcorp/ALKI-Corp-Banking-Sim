@@ -37,6 +37,9 @@ public class User {
     @Column(nullable = false, name = "created_at")
     private Instant createdAt;
 
+    @Column(nullable = false, name = "admin_status")
+    private boolean adminStatus = false;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "user_roles",

@@ -35,6 +35,9 @@ function formatActivityLabel(dayNumber, index, rangeMonths) {
 function App() {
   const initialToken = localStorage.getItem(STORAGE_KEYS.authToken)
   const [token, setToken] = useState(initialToken)
+  const [adminStatus, setAdminStatus] = useState(
+    localStorage.getItem(STORAGE_KEYS.adminStatus) === 'true',
+  )
   const [screen, setScreen] = useState(
     localStorage.getItem(STORAGE_KEYS.screen) || (initialToken ? 'home' : DEFAULT_SCREEN),
   )
@@ -58,6 +61,7 @@ function App() {
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerPassword, setRegisterPassword] = useState('')
   const [registerConfirm, setRegisterConfirm] = useState('')
+  const [registerAdminStatus, setRegisterAdminStatus] = useState(false)
   const [clientName, setClientName] = useState('')
   const [depositAmount, setDepositAmount] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
@@ -83,7 +87,9 @@ function App() {
     setSelectedClientId(null)
     setScreen(DEFAULT_SCREEN)
     setHudMenuOpen(false)
+    setAdminStatus(false)
     localStorage.removeItem(STORAGE_KEYS.authToken)
+    localStorage.removeItem(STORAGE_KEYS.adminStatus)
     localStorage.removeItem(STORAGE_KEYS.slot)
     localStorage.removeItem(STORAGE_KEYS.clientId)
     localStorage.removeItem(STORAGE_KEYS.screen)
@@ -124,6 +130,10 @@ function App() {
       localStorage.removeItem(STORAGE_KEYS.authToken)
     }
   }, [token])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.adminStatus, String(adminStatus))
+  }, [adminStatus])
 
   useEffect(() => {
     if (currentSlot) {
@@ -190,6 +200,7 @@ function App() {
   }, [])
 
   const userLabel = useMemo(() => getUserLabel(token), [token])
+  const isAdmin = adminStatus === true
 
   const shouldPollBank = screen === 'bank' || screen === 'client' || screen === 'investment'
   const shouldPollClients = screen === 'bank' || screen === 'client'
@@ -252,6 +263,7 @@ function App() {
       }),
     onSuccess: (data) => {
       setToken(data.token)
+      setAdminStatus(Boolean(data.adminStatus))
       setLoginPassword('')
       setLoginError('')
       setRegisterError('')
@@ -263,15 +275,17 @@ function App() {
   })
 
   const registerMutation = useMutation({
-    mutationFn: ({ username, email, password }) =>
+    mutationFn: ({ username, email, password, adminStatus }) =>
       apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ username, email, password, adminStatus }),
       }),
     onSuccess: (data) => {
       setToken(data.token)
+      setAdminStatus(Boolean(data.adminStatus))
       setRegisterPassword('')
       setRegisterConfirm('')
+      setRegisterAdminStatus(false)
       setRegisterError('')
       setLoginError('')
       setShowRegister(false)
@@ -407,7 +421,8 @@ function App() {
     if (screen === 'add-client') return 'Bank > Add Client'
     if (screen === 'client') return `Client > ${selectedClient?.name || ''}`
     if (screen === 'investment') return 'Bank > Investments'
-    if (screen === 'products') return 'Bank > Products'
+    if (screen === 'products') return 'Bank > Client Products'
+    if (screen === 'admin-products') return 'Bank > Admin Products'
     return '---'
   }, [screen, selectedClient])
 
@@ -433,6 +448,7 @@ function App() {
     setLoginPassword('')
     setRegisterPassword('')
     setRegisterConfirm('')
+    setRegisterAdminStatus(false)
     setShowRegister(false)
   }
 
@@ -461,6 +477,12 @@ function App() {
       setSelectedClientId(null)
     }
   }, [screen, selectedClientId, selectedClient])
+
+  useEffect(() => {
+    if (screen === 'admin-products' && !isAdmin) {
+      setScreen('bank')
+    }
+  }, [isAdmin, screen])
 
   useEffect(() => {
     if (screen !== 'add-client') return
@@ -548,6 +570,7 @@ function App() {
       username: registerUsername,
       email: registerEmail,
       password: registerPassword,
+      adminStatus: registerAdminStatus,
     })
   }
 
@@ -592,6 +615,9 @@ function App() {
             <span>
               Date: <span id="hud-date">{hudDate}</span>
             </span>
+            {isAdmin && (
+              <span className="text-green-600 ml-2">Admin status = True</span>
+            )}
           </div>
           <div>
             <span className={`save-indicator${saveVisible ? ' visible' : ''}`}>Saving...</span>
@@ -699,6 +725,7 @@ function App() {
                   type="button"
                   onClick={() => {
                     setShowRegister(true)
+                  setRegisterAdminStatus(false)
                     setLoginError('')
                   }}
                 >
@@ -767,6 +794,15 @@ function App() {
                   onChange={(event) => setShowRegisterPassword(event.target.checked)}
                 />
                 <span>Show password</span>
+              </label>
+              <label className="password-toggle">
+                <input
+                  type="checkbox"
+                  className="bw-checkbox"
+                  checked={registerAdminStatus}
+                  onChange={(event) => setRegisterAdminStatus(event.target.checked)}
+                />
+                <span>Make new user admin</span>
               </label>
               <p id="register-error-message" className="text-red-600 text-xs mt-2 text-center">
                 {registerError}
@@ -1081,8 +1117,13 @@ function App() {
                 <span className="btn-icon">⚙️</span> Manage Investments
               </button>
               <button className="bw-button" onClick={() => setScreen('products')}>
-                <span className="btn-icon">🧰</span> Manage Products
+                <span className="btn-icon">🧰</span> Manage Client Products
               </button>
+              {isAdmin && (
+                <button className="bw-button" onClick={() => setScreen('admin-products')}>
+                  <span className="btn-icon">🛠</span> Add/Edit Products
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1210,9 +1251,22 @@ function App() {
         <div id="products-view-screen" className={`screen ${screen === 'products' ? 'active' : ''}`}>
           <div className="bw-panel">
             <h2 className="bw-header">
-              <span className="header-icon">🧰</span> Product Management
+              <span className="header-icon">🧰</span> Manage Client Products
             </h2>
-            <p className="text-sm mb-2 text-center">Products dashboard coming soon.</p>
+            <p className="text-sm mb-2 text-center">Client products dashboard coming soon.</p>
+            <button className="bw-button mt-2 self-center" onClick={() => setScreen('bank')}>
+              <span className="btn-icon">🏦</span> Back to Bank View
+            </button>
+          </div>
+        </div>
+        <div
+          id="admin-products-view-screen"
+          className={`screen ${screen === 'admin-products' ? 'active' : ''}`}
+        >
+          <div className="bw-panel">
+            <h2 className="bw-header">
+              <span className="header-icon">🛠</span> Add/Edit Products
+            </h2>
             <button className="bw-button mt-2 self-center" onClick={() => setScreen('bank')}>
               <span className="btn-icon">🏦</span> Back to Bank View
             </button>
