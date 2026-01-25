@@ -331,7 +331,9 @@ function App() {
   const mortgagesQuery = useQuery({
     queryKey: ['mortgages', currentSlot],
     queryFn: () => apiFetch(`${API_BASE}/${currentSlot}/mortgages`),
-    enabled: Boolean(token && currentSlot && screen === 'products'),
+    enabled: Boolean(
+      token && currentSlot && (screen === 'products' || screen === 'property-market'),
+    ),
   })
 
   const ownedPropertiesQuery = useQuery({
@@ -809,6 +811,12 @@ function App() {
   }, [bankState?.mortgageRate, screen])
 
   useEffect(() => {
+    if (screen === 'property-market') {
+      mortgagesQuery.refetch()
+    }
+  }, [mortgagesQuery, screen])
+
+  useEffect(() => {
     if (screen !== 'add-client') return
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -1066,9 +1074,29 @@ function App() {
     const factor = Math.pow(1 + monthlyRate, months)
     return (principal * monthlyRate * factor) / (factor - 1)
   }, [mortgageDownPayment, mortgageRate, mortgageTermYears, selectedProperty])
-
   const showHud = !['login', 'home'].includes(screen)
   const canApplyForMortgage = screen === 'property-market'
+  const appliedPropertyIds = useMemo(() => {
+    if (!selectedClientId || !canApplyForMortgage) return new Set()
+    const ids = mortgages
+      .filter(
+        (mortgage) =>
+          String(mortgage.clientId) === String(selectedClientId) &&
+          mortgage.status !== 'REJECTED',
+      )
+      .map((mortgage) => String(mortgage.productId))
+    return new Set(ids)
+  }, [canApplyForMortgage, mortgages, selectedClientId])
+  const hasAppliedForSelectedProperty =
+    canApplyForMortgage &&
+    selectedClientId &&
+    selectedProperty &&
+    mortgages.some(
+      (mortgage) =>
+        String(mortgage.clientId) === String(selectedClientId) &&
+        String(mortgage.productId) === String(selectedProperty.id) &&
+        mortgage.status !== 'REJECTED',
+    )
 
   return (
     <div className="aspect-ratio-container">
@@ -1859,12 +1887,13 @@ function App() {
                 <button
                   className="bw-button w-full mt-3"
                   type="button"
+                  disabled={hasAppliedForSelectedProperty}
                   onClick={() => {
                     setShowPropertyModal(false)
                     setShowMortgageModal(true)
                   }}
                 >
-                  Apply for Mortgage
+                  {hasAppliedForSelectedProperty ? 'Already Applied' : 'Apply for Mortgage'}
                 </button>
               )}
             </div>
@@ -2015,9 +2044,7 @@ function App() {
 
         <div id="investment-view-screen" className={`screen ${screen === 'investment' ? 'active' : ''}`}>
           <div className="bw-panel">
-            <h2 className="bw-header">
-              <span className="header-icon">💼</span> Investment Portfolio
-            </h2>
+            <h2 className="bw-header">Investment Portfolio</h2>
             <p className="text-sm mb-2 text-center">
               Bank Liquid Cash: $<span id="invest-view-liquid-cash">{formatCurrency(investmentState?.liquidCash || 0)}</span>
             </p>
@@ -2093,15 +2120,16 @@ function App() {
 
         <div id="property-market-screen" className={`screen ${screen === 'property-market' ? 'active' : ''}`}>
           <div className="bw-panel">
-            <h2 className="bw-header">
-              <span className="header-icon">🏘</span> Property Market
-            </h2>
+            <h2 className="bw-header">Property Market</h2>
             <div className="property-grid property-grid-scroll">
               {!availableProducts.length && (
                 <p className="text-xs text-gray-500">No properties available right now.</p>
               )}
               {availableProducts.map((property) => (
                 <div key={property.id} className="property-card">
+                  {canApplyForMortgage && appliedPropertyIds.has(String(property.id)) && (
+                    <span className="property-ribbon">Application Sent</span>
+                  )}
                   {property.imageUrl ? (
                     <div
                       className="property-image"
@@ -2136,9 +2164,7 @@ function App() {
 
         <div id="products-view-screen" className={`screen ${screen === 'products' ? 'active' : ''}`}>
           <div className="bw-panel">
-            <h2 className="bw-header">
-              <span className="header-icon">🧰</span> Applications
-            </h2>
+            <h2 className="bw-header">Applications</h2>
             <div className="product-admin-section">
               <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
                 <span className="header-icon">📄</span> Loan Applications
@@ -2149,6 +2175,7 @@ function App() {
                   <table className="bw-table">
                     <thead>
                       <tr>
+                        <th>Date</th>
                         <th>Client</th>
                         <th>Amount</th>
                         <th>Term</th>
@@ -2157,8 +2184,14 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {loans.map((loan) => (
+                      {[...loans]
+                        .sort(
+                          (a, b) =>
+                            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+                        )
+                        .map((loan) => (
                         <tr key={loan.id}>
+                          <td>{formatIsoDate(loan.createdAt)}</td>
                           <td>{clientNameById.get(String(loan.clientId)) || loan.clientId}</td>
                           <td>${formatCurrency(loan.amount)}</td>
                           <td>{loan.termYears} yrs</td>
@@ -2208,6 +2241,7 @@ function App() {
                   <table className="bw-table">
                     <thead>
                       <tr>
+                        <th>Date</th>
                         <th>Client</th>
                         <th>Property</th>
                         <th>Loan</th>
@@ -2219,8 +2253,14 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mortgages.map((mortgage) => (
+                      {[...mortgages]
+                        .sort(
+                          (a, b) =>
+                            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+                        )
+                        .map((mortgage) => (
                         <tr key={mortgage.id}>
+                          <td>{formatIsoDate(mortgage.createdAt)}</td>
                           <td>{clientNameById.get(String(mortgage.clientId)) || mortgage.clientId}</td>
                           <td>
                             {productById.has(String(mortgage.productId)) ? (
