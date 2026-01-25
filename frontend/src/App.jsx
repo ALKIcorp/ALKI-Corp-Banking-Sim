@@ -399,13 +399,6 @@ function App() {
 
   const selectedClient = clients.find((client) => String(client.id) === String(selectedClientId))
 
-  useEffect(() => {
-    if (screen === 'client' && selectedClientId && !selectedClient) {
-      setScreen('bank')
-      setSelectedClientId(null)
-    }
-  }, [screen, selectedClientId, selectedClient])
-
   const hudDate = bankState ? getGameDateString(bankState.gameDay) : '---'
   const hudMode = useMemo(() => {
     if (screen === 'bank') return 'Bank Dashboard'
@@ -446,6 +439,47 @@ function App() {
     setSelectedClientId(null)
     setScreen('home')
   }
+
+  const handleCancelAddClient = useCallback(() => {
+    setScreen('bank')
+  }, [])
+
+  const handleRegisterClient = useCallback(() => {
+    if (!currentSlot) return
+    if (!clientName.trim()) {
+      setAddClientError('Please enter the client name.')
+      return
+    }
+    createClientMutation.mutate({ slotId: currentSlot, name: clientName.trim() })
+  }, [clientName, createClientMutation, currentSlot])
+
+  useEffect(() => {
+    if (screen === 'client' && selectedClientId && !selectedClient) {
+      setScreen('bank')
+      setSelectedClientId(null)
+    }
+  }, [screen, selectedClientId, selectedClient])
+
+  useEffect(() => {
+    if (screen !== 'add-client') return
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        handleCancelAddClient()
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        if (!createClientMutation.isPending) {
+          handleRegisterClient()
+        }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [createClientMutation.isPending, handleCancelAddClient, handleRegisterClient, screen])
 
   const handleDeposit = () => {
     if (!selectedClientId || !currentSlot) return
@@ -816,19 +850,12 @@ function App() {
             </p>
             <p className="text-red-600 text-xs mt-1 text-center">{addClientError}</p>
             <div className="flex justify-end gap-2">
-              <button className="bw-button" onClick={() => setScreen('bank')}>
+              <button className="bw-button" onClick={handleCancelAddClient}>
                 <span className="btn-icon">↩</span> Cancel
               </button>
               <button
                 className="bw-button"
-                onClick={() => {
-                  if (!currentSlot) return
-                  if (!clientName.trim()) {
-                    setAddClientError('Please enter the client name.')
-                    return
-                  }
-                  createClientMutation.mutate({ slotId: currentSlot, name: clientName.trim() })
-                }}
+                onClick={handleRegisterClient}
                 disabled={createClientMutation.isPending}
               >
                 <span className="btn-icon">✔</span> Register Client
