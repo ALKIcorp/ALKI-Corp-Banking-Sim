@@ -235,7 +235,7 @@ function App() {
 
   const shouldPollBank =
     screen === 'bank' || screen === 'client' || screen === 'investment' || screen === 'property-market'
-  const shouldPollClients = screen === 'bank' || screen === 'client'
+  const shouldPollClients = screen === 'bank' || screen === 'client' || screen === 'products'
   const shouldPollCharts = screen === 'bank'
 
   const slotsQuery = useQuery({
@@ -637,6 +637,13 @@ function App() {
   const selectedClient = clients.find((client) => String(client.id) === String(selectedClientId))
   const mortgageRate = normalizeMortgageRate(bankState?.mortgageRate)
   const hasMortgageRate = bankState?.mortgageRate !== undefined && bankState?.mortgageRate !== null
+  const clientNameById = useMemo(() => {
+    const map = new Map()
+    clients.forEach((client) => {
+      map.set(String(client.id), client.name)
+    })
+    return map
+  }, [clients])
 
   const hudDate = bankState ? getGameDateString(bankState.gameDay) : '---'
   const hudMode = useMemo(() => {
@@ -1952,7 +1959,7 @@ function App() {
                     <tbody>
                       {loans.map((loan) => (
                         <tr key={loan.id}>
-                          <td>{loan.clientId}</td>
+                          <td>{clientNameById.get(String(loan.clientId)) || loan.clientId}</td>
                           <td>${formatCurrency(loan.amount)}</td>
                           <td>{loan.termYears} yrs</td>
                           <td>{loan.status}</td>
@@ -2006,7 +2013,7 @@ function App() {
                     <tbody>
                       {mortgages.map((mortgage) => (
                         <tr key={mortgage.id}>
-                          <td>{mortgage.clientId}</td>
+                          <td>{clientNameById.get(String(mortgage.clientId)) || mortgage.clientId}</td>
                           <td>{mortgage.productId}</td>
                           <td>${formatCurrency(mortgage.loanAmount)}</td>
                           <td>{mortgage.termYears} yrs</td>
