@@ -38,6 +38,18 @@ function normalizeMortgageRate(rate) {
   return value > 1 ? value / 100 : value
 }
 
+function calculateMonthlyPayment({ principal, termYears, interestRate }) {
+  const principalValue = Number(principal || 0)
+  const years = Number(termYears || 0)
+  const rate = normalizeMortgageRate(interestRate)
+  if (!principalValue || !years) return null
+  const months = years * 12
+  const monthlyRate = rate / 12
+  if (!monthlyRate) return principalValue / months
+  const factor = Math.pow(1 + monthlyRate, months)
+  return (principalValue * monthlyRate * factor) / (factor - 1)
+}
+
 function App() {
   const initialToken = localStorage.getItem(STORAGE_KEYS.authToken)
   const [token, setToken] = useState(initialToken)
@@ -644,6 +656,13 @@ function App() {
     })
     return map
   }, [clients])
+  const productById = useMemo(() => {
+    const map = new Map()
+    ;[...availableProducts, ...adminProducts].forEach((product) => {
+      map.set(String(product.id), product)
+    })
+    return map
+  }, [availableProducts, adminProducts])
 
   const hudDate = bankState ? getGameDateString(bankState.gameDay) : '---'
   const hudMode = useMemo(() => {
@@ -651,7 +670,7 @@ function App() {
     if (screen === 'add-client') return 'Bank > Add Client'
     if (screen === 'client') return `Client > ${selectedClient?.name || ''}`
     if (screen === 'investment') return 'Bank > Investments'
-    if (screen === 'products') return 'Bank > Client Products'
+    if (screen === 'products') return 'Bank > Applications'
     if (screen === 'admin-products') return 'Bank > Admin Products'
     if (screen === 'property-market') return 'Bank > Property Market'
     return '---'
@@ -1532,7 +1551,7 @@ function App() {
                 <span className="btn-icon">⚙️</span> Manage Investments
               </button>
               <button className="bw-button" onClick={() => setScreen('products')}>
-                <span className="btn-icon">🧰</span> Manage Client Products
+                <span className="btn-icon">🧰</span> Applications
               </button>
               {isAdmin && (
                 <button className="bw-button" onClick={() => setScreen('admin-products')}>
@@ -1937,7 +1956,7 @@ function App() {
         <div id="products-view-screen" className={`screen ${screen === 'products' ? 'active' : ''}`}>
           <div className="bw-panel">
             <h2 className="bw-header">
-              <span className="header-icon">🧰</span> Manage Client Products
+              <span className="header-icon">🧰</span> Applications
             </h2>
             <div className="product-admin-section">
               <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
@@ -1981,7 +2000,13 @@ function App() {
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-xs text-gray-500">Processed</span>
+                                <span
+                                  className={`text-xs ${
+                                    loan.status === 'APPROVED' ? 'text-green-600' : 'text-red-600'
+                                  }`}
+                                >
+                                  Processed
+                                </span>
                               )}
                             </td>
                           )}
@@ -2005,6 +2030,8 @@ function App() {
                         <th>Client</th>
                         <th>Property</th>
                         <th>Loan</th>
+                        <th>Down %</th>
+                        <th>Monthly</th>
                         <th>Term</th>
                         <th>Status</th>
                         {isAdmin && <th>Actions</th>}
@@ -2014,8 +2041,38 @@ function App() {
                       {mortgages.map((mortgage) => (
                         <tr key={mortgage.id}>
                           <td>{clientNameById.get(String(mortgage.clientId)) || mortgage.clientId}</td>
-                          <td>{mortgage.productId}</td>
+                          <td>
+                            {productById.has(String(mortgage.productId)) ? (
+                              <button
+                                className="bw-button"
+                                type="button"
+                                onClick={() => {
+                                  setSelectedProperty(productById.get(String(mortgage.productId)))
+                                  setShowPropertyModal(true)
+                                }}
+                              >
+                                View Property
+                              </button>
+                            ) : (
+                              mortgage.productId
+                            )}
+                          </td>
                           <td>${formatCurrency(mortgage.loanAmount)}</td>
+                          <td>
+                            {mortgage.propertyPrice
+                              ? `${((Number(mortgage.downPayment || 0) / Number(mortgage.propertyPrice)) * 100).toFixed(2)}%`
+                              : '--'}
+                          </td>
+                          <td>
+                            {(() => {
+                              const monthlyPayment = calculateMonthlyPayment({
+                                principal: mortgage.loanAmount,
+                                termYears: mortgage.termYears,
+                                interestRate: mortgage.interestRate,
+                              })
+                              return monthlyPayment ? `$${formatCurrency(monthlyPayment)}` : '--'
+                            })()}
+                          </td>
                           <td>{mortgage.termYears} yrs</td>
                           <td>{mortgage.status}</td>
                           {isAdmin && (
@@ -2046,7 +2103,13 @@ function App() {
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-xs text-gray-500">Processed</span>
+                                <span
+                                  className={`text-xs ${
+                                    mortgage.status === 'ACCEPTED' ? 'text-green-600' : 'text-red-600'
+                                  }`}
+                                >
+                                  Processed
+                                </span>
                               )}
                             </td>
                           )}
