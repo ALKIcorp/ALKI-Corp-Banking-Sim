@@ -31,8 +31,10 @@ This guide covers how to run the Banking Sim API locally on **Windows** and **Ma
 2. **Create the database and set credentials**
    - Open **pgAdmin** and connect to your server.
    - Create an empty database (default name: `1778145`).
-   - Ensure your username/password match `spring.datasource.username` and
-     `spring.datasource.password` in `src/main/resources/application.properties`.
+   - Default credentials (from `src/main/resources/application.properties`):
+     - **Username:** `alkicorp`
+     - **Password:** `password`
+     - Update these via `spring.datasource.username` / `spring.datasource.password` if needed.
    - Liquibase will create/update the schema automatically on app startup.
    - If you are restoring a provided backup, use the `.backup` file in **pgAdmin → Restore**.
 
@@ -158,6 +160,7 @@ Authorization: Bearer <token>
 - GET /api/slots/{slotId}/mortgages — list mortgages
 - POST /api/slots/{slotId}/mortgages/{mortgageId}/approve — approve mortgage (admin)
 - POST /api/slots/{slotId}/mortgages/{mortgageId}/reject — reject mortgage (admin)
+
 
 ### Investments & Charts
 - GET /api/slots/{slotId}/investments/sp500 — get SP500 investment state

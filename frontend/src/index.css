@@ -599,6 +599,8 @@ body {
 .text-green-600 { color: var(--color-accent-green); }
 .text-gray-500 { color: var(--color-text-medium); }
 .text-gray-600 { color: #9ca3af; }
+.text-white { color: #ffffff; }
+.mortgage-funding-value { color: #ffffff !important; }
 .text-center { text-align: center; }
 .rounded { border-radius: 0.25rem; }
 .bg-gray-100 { background-color: rgba(255, 255, 255, 0.05); }

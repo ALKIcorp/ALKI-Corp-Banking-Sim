@@ -1948,16 +1948,28 @@ function App() {
                   No
                 </button>
               </div>
-              <div className="text-xs text-gray-600 mt-3">
+              <div className="text-xs mt-3" style={{ color: '#ffffff' }}>
                 <p>
-                  {(mortgageFundingDetails.client?.name ||
-                    clientNameById.get(String(mortgageFundingDetails.mortgage.clientId)) ||
-                    'Client')}{' '}
-                  available funds: ${formatCurrency(mortgageFundingDetails.availableFunds)}
+                  <span>
+                    {(mortgageFundingDetails.client?.name ||
+                      clientNameById.get(String(mortgageFundingDetails.mortgage.clientId)) ||
+                      'Client')}{' '}
+                    available funds:{' '}
+                  </span>
+                  <span>${formatCurrency(mortgageFundingDetails.availableFunds)}</span>
                 </p>
-                <p className="mt-2">Property value: ${formatCurrency(mortgageFundingDetails.propertyValue)}</p>
-                <p className="mt-2">Down deposit amount: ${formatCurrency(mortgageFundingDetails.downPaymentAmount)}</p>
-                <p className="mt-2">Amount needed: ${formatCurrency(mortgageFundingDetails.amountNeeded)}</p>
+                <p className="mt-2">
+                  <span>Property value: </span>
+                  <span>${formatCurrency(mortgageFundingDetails.propertyValue)}</span>
+                </p>
+                <p className="mt-2">
+                  <span>Down deposit amount: </span>
+                  <span>${formatCurrency(mortgageFundingDetails.downPaymentAmount)}</span>
+                </p>
+                <p className="mt-2">
+                  <span>Amount needed: </span>
+                  <span>${formatCurrency(mortgageFundingDetails.amountNeeded)}</span>
+                </p>
               </div>
             </div>
           </div>
