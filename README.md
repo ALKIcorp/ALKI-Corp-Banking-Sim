@@ -265,10 +265,14 @@ View “all products” (not just available ones).
 - `Content-Type: application/json`
 
 **Body**
-- `username`: `{{username}}`
-- `email`: `{{email}}`
-- `password`: `{{password}}`
-- `adminStatus`: `false`
+```json
+{
+  "username": "{{username}}",
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "adminStatus": false
+}
+```
 
 **Description**
 Create a new user account. Returns an `AuthResponse` (including a JWT token you can reuse as `{{token}}`).
@@ -280,8 +284,12 @@ Create a new user account. Returns an `AuthResponse` (including a JWT token you 
 - `Content-Type: application/json`
 
 **Body**
-- `usernameOrEmail`: `{{usernameOrEmail}}`
-- `password`: `{{password}}`
+```json
+{
+  "usernameOrEmail": "{{usernameOrEmail}}",
+  "password": "{{password}}"
+}
+```
 
 **Description**
 Login and receive an `AuthResponse` containing a JWT (save it as `{{token}}` for protected endpoints).
@@ -336,7 +344,11 @@ Fetch the current bank state for the given slot.
 - `Content-Type: application/json`
 
 **Body**
-- `mortgageRate`: `{{mortgageRate}}`
+```json
+{
+  "mortgageRate": "{{mortgageRate}}"
+}
+```
 
 **Description**
 Update the mortgage interest rate for the slot (ADMIN only). Returns the updated bank state.
@@ -365,7 +377,11 @@ List all clients in the given slot.
 - `Content-Type: application/json`
 
 **Body**
-- `name`: `{{name}}`
+```json
+{
+  "name": "{{name}}"
+}
+```
 
 **Description**
 Create a new client in the given slot.
@@ -414,7 +430,11 @@ List all products/properties currently owned by the client in the given slot.
 - `Content-Type: application/json`
 
 **Body**
-- `amount`: `{{amount}}`
+```json
+{
+  "amount": "{{amount}}"
+}
+```
 
 **Description**
 Deposit funds into the client’s checking account (creates a transaction).
@@ -427,7 +447,11 @@ Deposit funds into the client’s checking account (creates a transaction).
 - `Content-Type: application/json`
 
 **Body**
-- `amount`: `{{amount}}`
+```json
+{
+  "amount": "{{amount}}"
+}
+```
 
 **Description**
 Withdraw funds from the client’s checking account (creates a transaction).
@@ -440,7 +464,11 @@ Withdraw funds from the client’s checking account (creates a transaction).
 - `Content-Type: application/json`
 
 **Body**
-- `amount`: `{{amount}}`
+```json
+{
+  "amount": "{{amount}}"
+}
+```
 
 **Description**
 Fund a mortgage down payment for the client (creates a transaction).
@@ -493,12 +521,16 @@ Fetch details for a single product in the given slot.
 - `Content-Type: application/json`
 
 **Body**
-- `name`: `{{name}}`
-- `price`: `{{price}}`
-- `description`: `{{description}}`
-- `rooms`: `{{rooms}}`
-- `sqft2`: `{{sqft2}}`
-- `imageUrl`: `{{imageUrl}}`
+```json
+{
+  "name": "{{name}}",
+  "price": "{{price}}",
+  "description": "{{description}}",
+  "rooms": "{{rooms}}",
+  "sqft2": "{{sqft2}}",
+  "imageUrl": "{{imageUrl}}"
+}
+```
 
 **Description**
 Create a new product in the slot (ADMIN only).
@@ -511,13 +543,17 @@ Create a new product in the slot (ADMIN only).
 - `Content-Type: application/json`
 
 **Body**
-- `name`: `{{name}}`
-- `price`: `{{price}}`
-- `description`: `{{description}}`
-- `rooms`: `{{rooms}}`
-- `sqft2`: `{{sqft2}}`
-- `imageUrl`: `{{imageUrl}}`
-- `status`: `{{status}}`
+```json
+{
+  "name": "{{name}}",
+  "price": "{{price}}",
+  "description": "{{description}}",
+  "rooms": "{{rooms}}",
+  "sqft2": "{{sqft2}}",
+  "imageUrl": "{{imageUrl}}",
+  "status": "{{status}}"
+}
+```
 
 **Description**
 Update an existing product (ADMIN only). `status` is a string matching the product status enum.
@@ -546,8 +582,12 @@ Delete a product from the slot (ADMIN only).
 - `Content-Type: application/json`
 
 **Body**
-- `amount`: `{{amount}}`
-- `termYears`: `{{termYears}}`
+```json
+{
+  "amount": "{{amount}}",
+  "termYears": "{{termYears}}"
+}
+```
 
 **Description**
 Create a loan request for a client in the given slot.
@@ -600,9 +640,13 @@ Reject a loan in the given slot (ADMIN only).
 - `Content-Type: application/json`
 
 **Body**
-- `productId`: `{{productId}}`
-- `downPayment`: `{{downPayment}}`
-- `termYears`: `{{termYears}}`
+```json
+{
+  "productId": "{{productId}}",
+  "downPayment": "{{downPayment}}",
+  "termYears": "{{termYears}}"
+}
+```
 
 **Description**
 Create a mortgage request for a client in the given slot, tied to a specific product/property.
@@ -667,7 +711,11 @@ Get the current SP500 investment state for the slot (cash, invested amount, pric
 - `Content-Type: application/json`
 
 **Body**
-- `amount`: `{{amount}}`
+```json
+{
+  "amount": "{{amount}}"
+}
+```
 
 **Description**
 Invest cash into the SP500 for the given slot.
@@ -680,7 +728,11 @@ Invest cash into the SP500 for the given slot.
 - `Content-Type: application/json`
 
 **Body**
-- `amount`: `{{amount}}`
+```json
+{
+  "amount": "{{amount}}"
+}
+```
 
 **Description**
 Divest (sell) SP500 holdings back into cash for the given slot.
