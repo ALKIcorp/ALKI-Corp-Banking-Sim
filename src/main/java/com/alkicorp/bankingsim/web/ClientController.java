@@ -83,6 +83,14 @@ public class ClientController {
         return toResponse(tx);
     }
 
+    @PostMapping("/{clientId}/mortgage-funding")
+    public TransactionResponse fundMortgageDownPayment(@PathVariable int slotId,
+                                                       @PathVariable Long clientId,
+                                                       @Valid @RequestBody MoneyRequest request) {
+        Transaction tx = clientService.fundMortgageDownPayment(slotId, clientId, request.getAmount());
+        return toResponse(tx);
+    }
+
     private ClientResponse toResponse(Client client) {
         return ClientResponse.builder()
             .id(client.getId())

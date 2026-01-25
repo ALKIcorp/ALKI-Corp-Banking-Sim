@@ -12,6 +12,7 @@ import { ActivityChart, ClientMoneyChart } from './components/Charts.jsx'
 import { formatCurrency, getGameDateString, getUserLabel } from './utils.js'
 
 const DEFAULT_SCREEN = 'login'
+const INSUFFICIENT_MORTGAGE_FUNDS_MESSAGE = 'Not enough funds to purchase property.'
 const ACTIVITY_RANGE_OPTIONS = [
   { id: 'all', label: 'All', months: null },
   { id: '10y', label: '10yrs', months: 120 },
@@ -76,7 +77,9 @@ function App() {
   const [showLoanModal, setShowLoanModal] = useState(false)
   const [showMortgageModal, setShowMortgageModal] = useState(false)
   const [showPropertyModal, setShowPropertyModal] = useState(false)
+  const [showMortgageFundingModal, setShowMortgageFundingModal] = useState(false)
   const [selectedProperty, setSelectedProperty] = useState(null)
+  const [mortgageFundingContext, setMortgageFundingContext] = useState(null)
 
   const [loginUsername, setLoginUsername] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
@@ -111,6 +114,7 @@ function App() {
   const [loanApplicationError, setLoanApplicationError] = useState('')
   const [mortgageApplicationError, setMortgageApplicationError] = useState('')
   const [adminProductsError, setAdminProductsError] = useState('')
+  const [mortgageFundingError, setMortgageFundingError] = useState('')
   const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
   const [activityRange, setActivityRange] = useState('all')
@@ -599,11 +603,31 @@ function App() {
   const approveMortgageMutation = useMutation({
     mutationFn: ({ slotId, mortgageId }) =>
       apiFetch(`${API_BASE}/${slotId}/mortgages/${mortgageId}/approve`, { method: 'POST' }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
-      queryClient.invalidateQueries({ queryKey: ['client-properties', currentSlot, selectedClientId] })
+      const targetClientId = variables?.clientId ?? selectedClientId
+      if (targetClientId) {
+        queryClient.invalidateQueries({ queryKey: ['client-properties', currentSlot, targetClientId] })
+      }
+      queryClient.invalidateQueries({ queryKey: ['clients', currentSlot] })
+      if (variables?.clientId) {
+        queryClient.invalidateQueries({ queryKey: ['transactions', currentSlot, variables.clientId] })
+      }
+      setMortgageFundingError('')
+      setShowMortgageFundingModal(false)
+      setMortgageFundingContext(null)
       triggerSaveIndicator()
+    },
+    onError: (error, variables) => {
+      if (error.message === INSUFFICIENT_MORTGAGE_FUNDS_MESSAGE && variables?.mortgage) {
+        const client = clients.find((entry) => String(entry.id) === String(variables.mortgage.clientId))
+        setMortgageFundingContext({ mortgage: variables.mortgage, client })
+        setMortgageFundingError(error.message)
+        setShowMortgageFundingModal(true)
+        return
+      }
+      setMortgageFundingError(error.message)
     },
   })
 
@@ -613,6 +637,33 @@ function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
       triggerSaveIndicator()
+    },
+  })
+
+  const fundMortgageDownPaymentMutation = useMutation({
+    mutationFn: ({ slotId, clientId, amount }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${clientId}/mortgage-funding`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+      }),
+    onSuccess: (data, variables) => {
+      setMortgageFundingError('')
+      queryClient.invalidateQueries({ queryKey: ['clients', currentSlot] })
+      if (variables?.clientId) {
+        queryClient.invalidateQueries({ queryKey: ['transactions', currentSlot, variables.clientId] })
+      }
+      triggerSaveIndicator()
+      if (variables?.slotId && variables?.mortgageId) {
+        approveMortgageMutation.mutate({
+          slotId: variables.slotId,
+          mortgageId: variables.mortgageId,
+          clientId: variables.clientId,
+          mortgage: variables.mortgage,
+        })
+      }
+    },
+    onError: (error) => {
+      setMortgageFundingError(error.message)
     },
   })
 
@@ -663,6 +714,16 @@ function App() {
     })
     return map
   }, [availableProducts, adminProducts])
+  const mortgageFundingDetails = useMemo(() => {
+    if (!mortgageFundingContext?.mortgage) return null
+    const mortgage = mortgageFundingContext.mortgage
+    const client = mortgageFundingContext.client
+    const availableFunds = Number(client?.checkingBalance || 0)
+    const downPaymentAmount = Number(mortgage?.downPayment || 0)
+    const propertyValue = Number(mortgage?.propertyPrice || 0)
+    const amountNeeded = Math.max(0, Number((downPaymentAmount - availableFunds).toFixed(2)))
+    return { mortgage, client, availableFunds, downPaymentAmount, propertyValue, amountNeeded }
+  }, [mortgageFundingContext])
 
   const hudDate = bankState ? getGameDateString(bankState.gameDay) : '---'
   const hudMode = useMemo(() => {
@@ -844,6 +905,12 @@ function App() {
       termYears: mortgageTermYears,
       downPayment,
     })
+  }
+
+  const closeMortgageFundingModal = () => {
+    setShowMortgageFundingModal(false)
+    setMortgageFundingContext(null)
+    setMortgageFundingError('')
   }
 
   const handleSubmitProduct = () => {
@@ -1302,7 +1369,7 @@ function App() {
         <div id="client-view-screen" className={`screen ${screen === 'client' ? 'active' : ''}`}>
           <div className="bw-panel">
             <h2 className="bw-header">
-              <span className="header-icon">💳</span> Client: <span id="client-view-name">{selectedClient?.name}</span>
+              Client: <span id="client-view-name">{selectedClient?.name}</span>
             </h2>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
@@ -1409,11 +1476,18 @@ function App() {
               <div id="client-log-area" className="log-area">
                 {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
                 {transactions.map((tx) => {
-                  const isDeposit = tx.type === 'DEPOSIT' || tx.type === 'LOAN_DISBURSEMENT'
+                  const isDeposit =
+                    tx.type === 'DEPOSIT' ||
+                    tx.type === 'LOAN_DISBURSEMENT' ||
+                    tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING'
                   const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
                   const typeSymbol = isDeposit ? '➕' : '➖'
-                  const typeLabel =
-                    tx.type === 'LOAN_DISBURSEMENT' ? 'Loan Disbursement' : tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
+                  const typeLabel = (() => {
+                    if (tx.type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
+                    if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
+                    if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
+                    return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
+                  })()
                   return (
                     <div className="log-entry" key={tx.id}>
                       <span className="text-gray-500">{getGameDateString(tx.gameDay)}:</span>{' '}
@@ -1435,7 +1509,7 @@ function App() {
         <div id="bank-view-screen" className={`screen ${screen === 'bank' ? 'active' : ''}`}>
           <div className="bw-panel">
             <h2 className="bw-header">
-              <span className="header-icon">💴</span> ALKI corp.
+              ALKI corp.
             </h2>
             <div className="flex justify-between items-center mb-4">
               <div className="text-sm">
@@ -1832,6 +1906,63 @@ function App() {
           </div>
         )}
 
+        {showMortgageFundingModal && mortgageFundingDetails && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mortgage funding"
+            onClick={closeMortgageFundingModal}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <button className="bw-button modal-close" type="button" onClick={closeMortgageFundingModal}>
+                Close
+              </button>
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
+                <span className="header-icon">⚠️</span>{' '}
+                {mortgageFundingError || INSUFFICIENT_MORTGAGE_FUNDS_MESSAGE}
+              </h3>
+              <p className="text-xs text-gray-600">Will the bank fund the down deposit for dev purposes?</p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  className="bw-button"
+                  type="button"
+                  disabled={fundMortgageDownPaymentMutation.isPending}
+                  onClick={() => {
+                    if (!currentSlot || !mortgageFundingDetails.mortgage) return
+                    const clientId = mortgageFundingDetails.mortgage.clientId
+                    const amount = mortgageFundingDetails.amountNeeded
+                    if (!amount || amount <= 0) return
+                    fundMortgageDownPaymentMutation.mutate({
+                      slotId: currentSlot,
+                      clientId,
+                      amount,
+                      mortgageId: mortgageFundingDetails.mortgage.id,
+                      mortgage: mortgageFundingDetails.mortgage,
+                    })
+                  }}
+                >
+                  Yes
+                </button>
+                <button className="bw-button" type="button" onClick={closeMortgageFundingModal}>
+                  No
+                </button>
+              </div>
+              <div className="text-xs text-gray-600 mt-3">
+                <p>
+                  {(mortgageFundingDetails.client?.name ||
+                    clientNameById.get(String(mortgageFundingDetails.mortgage.clientId)) ||
+                    'Client')}{' '}
+                  available funds: ${formatCurrency(mortgageFundingDetails.availableFunds)}
+                </p>
+                <p className="mt-2">Property value: ${formatCurrency(mortgageFundingDetails.propertyValue)}</p>
+                <p className="mt-2">Down deposit amount: ${formatCurrency(mortgageFundingDetails.downPaymentAmount)}</p>
+                <p className="mt-2">Amount needed: ${formatCurrency(mortgageFundingDetails.amountNeeded)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div id="investment-view-screen" className={`screen ${screen === 'investment' ? 'active' : ''}`}>
           <div className="bw-panel">
             <h2 className="bw-header">
@@ -2085,6 +2216,8 @@ function App() {
                                       approveMortgageMutation.mutate({
                                         slotId: currentSlot,
                                         mortgageId: mortgage.id,
+                                        clientId: mortgage.clientId,
+                                        mortgage,
                                       })
                                     }
                                   >

@@ -6,13 +6,17 @@ import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.Mortgage;
 import com.alkicorp.bankingsim.model.Product;
+import com.alkicorp.bankingsim.model.Transaction;
 import com.alkicorp.bankingsim.model.enums.MortgageStatus;
 import com.alkicorp.bankingsim.model.enums.ProductStatus;
+import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.MortgageRepository;
 import com.alkicorp.bankingsim.repository.ProductRepository;
+import com.alkicorp.bankingsim.repository.TransactionRepository;
 import jakarta.validation.ValidationException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -29,6 +33,7 @@ public class MortgageService {
     private final MortgageRepository mortgageRepository;
     private final ProductRepository productRepository;
     private final ClientRepository clientRepository;
+    private final TransactionRepository transactionRepository;
     private final CurrentUserService currentUserService;
     private final SimulationService simulationService;
     private final Clock clock = Clock.systemUTC();
@@ -96,6 +101,19 @@ public class MortgageService {
             if (product.getStatus() != ProductStatus.AVAILABLE) {
                 throw new ValidationException("Property is no longer available.");
             }
+            Client client = mortgage.getClient();
+            BigDecimal downPayment = mortgage.getDownPayment();
+            if (downPayment.compareTo(BigDecimal.ZERO) > 0) {
+                if (downPayment.compareTo(client.getCheckingBalance()) > 0) {
+                    throw new ValidationException("Not enough funds to purchase property.");
+                }
+                BankState state = simulationService.getAndAdvanceState(user, slotId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                client.setCheckingBalance(client.getCheckingBalance().subtract(downPayment));
+                clientRepository.save(client);
+                recordTransaction(client, state, TransactionType.MORTGAGE_DOWN_PAYMENT, downPayment);
+            }
             product.setStatus(ProductStatus.OWNED);
             product.setOwnerClient(mortgage.getClient());
             productRepository.save(product);
@@ -115,5 +133,15 @@ public class MortgageService {
         if (downPayment == null || downPayment.compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidationException("Down payment cannot be negative.");
         }
+    }
+
+    private Transaction recordTransaction(Client client, BankState state, TransactionType type, BigDecimal amount) {
+        Transaction tx = new Transaction();
+        tx.setClient(client);
+        tx.setType(type);
+        tx.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        tx.setGameDay((int) Math.floor(state.getGameDay()));
+        tx.setCreatedAt(Instant.now(clock));
+        return transactionRepository.save(tx);
     }
 }

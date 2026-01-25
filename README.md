@@ -28,11 +28,13 @@ This guide covers how to run the Banking Sim API locally on **Windows** and **Ma
 
 ---
 
-2. **Restore the database** (from the provided `.sql` backup)
+2. **Create the database and set credentials**
    - Open **pgAdmin** and connect to your server.
-   - Create an empty database (e.g., `1778145`).
-   - Right‑click the database → **Query Tool**.
-   - Open the `.sql` file and click **Run** to import schema + data.
+   - Create an empty database (default name: `1778145`).
+   - Ensure your username/password match `spring.datasource.username` and
+     `spring.datasource.password` in `src/main/resources/application.properties`.
+   - Liquibase will create/update the schema automatically on app startup.
+   - If you are restoring a provided backup, use the `.backup` file in **pgAdmin → Restore**.
 
 ---
 
@@ -42,15 +44,13 @@ This starts both the backend (`mvn spring-boot:run`) and frontend (`npm run dev`
 Press `Ctrl+C` to stop the frontend; the script will also stop the backend process.
 
 ### Windows (PowerShell)
-```
 .\Scripts\Windows\dev.ps1
-```
+
 
 ### Mac (Bash/Terminal)
-```
 chmod +x Scripts/MacOS/dev.sh
 ./Scripts/MacOS/dev.sh
-```
+
 
 ### Manual method (if script fails)
 
@@ -115,7 +115,7 @@ mvn spring-boot:run
 ## API Requests
 
 ### Authentication
-- POST /auth/register — create a user (body: RegisterRequest { username, email, password })
+- POST /auth/register — create a user (body: RegisterRequest { username, email, password, adminStatus? })
 - POST /auth/login — login and receive JWT (body: LoginRequest { usernameOrEmail, password })
 
 Include the JWT in requests to protected endpoints:
@@ -127,14 +127,37 @@ Authorization: Bearer <token>
 - GET /api/slots — list slot summaries
 - POST /api/slots/{slotId}/start — reset and start a slot
 - GET /api/slots/{slotId}/bank — get bank state for a slot
+- PUT /api/slots/{slotId}/mortgage-rate — update mortgage rate (admin)
 
 ### Clients
 - GET /api/slots/{slotId}/clients — list clients in a slot
 - POST /api/slots/{slotId}/clients — create client (body: CreateClientRequest { name })
 - GET /api/slots/{slotId}/clients/{clientId} — get client details
 - GET /api/slots/{slotId}/clients/{clientId}/transactions — list client transactions
+- GET /api/slots/{slotId}/clients/{clientId}/properties — list owned properties
 - POST /api/slots/{slotId}/clients/{clientId}/deposit — deposit funds (body: MoneyRequest { amount })
 - POST /api/slots/{slotId}/clients/{clientId}/withdraw — withdraw funds (body: MoneyRequest { amount })
+- POST /api/slots/{slotId}/clients/{clientId}/mortgage-funding — fund mortgage down payment (body: MoneyRequest { amount })
+
+### Products
+- GET /api/slots/{slotId}/products — list available products
+- GET /api/slots/{slotId}/products/all — list all products (admin)
+- GET /api/slots/{slotId}/products/{productId} — get product details
+- POST /api/slots/{slotId}/products — create product (admin, body: CreateProductRequest)
+- PUT /api/slots/{slotId}/products/{productId} — update product (admin, body: UpdateProductRequest)
+- DELETE /api/slots/{slotId}/products/{productId} — delete product (admin)
+
+### Loans
+- POST /api/slots/{slotId}/clients/{clientId}/loans — create loan (body: LoanRequest { amount, termYears })
+- GET /api/slots/{slotId}/loans — list loans
+- POST /api/slots/{slotId}/loans/{loanId}/approve — approve loan (admin)
+- POST /api/slots/{slotId}/loans/{loanId}/reject — reject loan (admin)
+
+### Mortgages
+- POST /api/slots/{slotId}/clients/{clientId}/mortgages — create mortgage (body: MortgageRequest { productId, downPayment, termYears })
+- GET /api/slots/{slotId}/mortgages — list mortgages
+- POST /api/slots/{slotId}/mortgages/{mortgageId}/approve — approve mortgage (admin)
+- POST /api/slots/{slotId}/mortgages/{mortgageId}/reject — reject mortgage (admin)
 
 ### Investments & Charts
 - GET /api/slots/{slotId}/investments/sp500 — get SP500 investment state

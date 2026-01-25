@@ -110,6 +110,11 @@ public class ClientService {
         return recordTransaction(client, state, type, amount);
     }
 
+    @Transactional
+    public Transaction fundMortgageDownPayment(int slotId, Long clientId, BigDecimal amount) {
+        return creditAccount(slotId, clientId, amount, TransactionType.MORTGAGE_DOWN_PAYMENT_FUNDING, false);
+    }
+
     @Transactional(readOnly = true)
     public List<Transaction> getTransactions(Long clientId, int slotId) {
         Client client = getClient(slotId, clientId);
