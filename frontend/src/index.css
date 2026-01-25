@@ -305,7 +305,13 @@ body {
 
 /* --- Screen Visibility Control --- */
 .screen { display: none; }
-.screen.active { display: flex; flex-direction: column; flex-grow: 1; animation: fadeIn 0.3s ease; }
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+  animation: fadeIn 0.3s ease;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
@@ -353,11 +359,41 @@ body {
 
 .chart-container {
   position: relative;
-  height: clamp(120px, 20vh, 250px);
+  height: clamp(200px, 30vh, 320px);
   width: 100%;
   margin-bottom: 5px;
   padding: 5px;
   box-sizing: border-box;
+}
+.chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.chart-range-menu {
+  justify-content: center;
+}
+.chart-range-toggle {
+  font-size: 9px;
+  padding: 4px 8px;
+  margin: 0;
+}
+.chart-range-panel {
+  right: auto;
+  left: 0;
+  min-width: 140px;
+}
+.chart-range-item {
+  margin: 0;
+}
+.chart-range-label {
+  display: inline-block;
+}
+.dropdown-arrow {
+  font-size: 0.9em;
+  margin-left: 6px;
 }
 .chart-title {
   text-align: center;
@@ -367,11 +403,58 @@ body {
   color: var(--color-text-medium);
 }
 
+#bank-view-screen .bw-panel {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+#bank-view-screen .bw-header {
+  margin-bottom: 4px;
+  padding-bottom: 3px;
+}
+
 #bank-view-screen .bw-panel > .grid {
-  margin-top: 15px;
+  margin-top: 4px;
 }
 #bank-view-screen .bw-panel > h3 {
-  margin-top: 15px;
+  margin-top: 4px;
+}
+
+#bank-view-screen .analytics-grid {
+  align-items: stretch;
+}
+#bank-view-screen .analytics-grid .chart-container {
+  height: clamp(180px, 24vh, 280px);
+}
+#bank-view-screen .analytics-grid .chart-title {
+  margin-bottom: 2px;
+}
+
+#bank-view-screen #client-list {
+  max-height: clamp(120px, 16vh, 180px);
+}
+
+#bank-view-screen .chart-controls {
+  margin-bottom: 2px;
+}
+
+#bank-view-screen .bw-button {
+  font-size: 9px;
+  padding: 4px 8px;
+}
+
+@media (max-width: 1100px) {
+  #bank-view-screen .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+  #bank-view-screen .analytics-grid .chart-container {
+    height: clamp(200px, 30vh, 320px);
+  }
 }
 
 .transaction-log {

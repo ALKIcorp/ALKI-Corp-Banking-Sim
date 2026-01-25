@@ -4,6 +4,7 @@ import { apiFetch, setUnauthorizedHandler } from './api.js'
 import {
   API_BASE,
   DAILY_WITHDRAWAL_LIMIT,
+  DAYS_PER_YEAR,
   POLL_INTERVAL_MS,
   STORAGE_KEYS,
 } from './constants.js'
@@ -11,6 +12,25 @@ import { ActivityChart, ClientMoneyChart } from './components/Charts.jsx'
 import { formatCurrency, getGameDateString, getUserLabel } from './utils.js'
 
 const DEFAULT_SCREEN = 'login'
+const ACTIVITY_RANGE_OPTIONS = [
+  { id: 'all', label: 'All', months: null },
+  { id: '10y', label: '10yrs', months: 120 },
+  { id: '5y', label: '5yrs', months: 60 },
+  { id: '2y', label: '2yrs', months: 24 },
+  { id: '1y', label: '1yr', months: 12 },
+  { id: '6m', label: '6 months', months: 6 },
+  { id: '3m', label: '3 months', months: 3 },
+]
+
+function formatActivityLabel(dayNumber, index, rangeMonths) {
+  if (!rangeMonths || rangeMonths >= DAYS_PER_YEAR) {
+    return getGameDateString(dayNumber)
+  }
+  if (rangeMonths >= 6) {
+    return `M${(dayNumber % DAYS_PER_YEAR) + 1}`
+  }
+  return `D${index + 1}`
+}
 
 function App() {
   const initialToken = localStorage.getItem(STORAGE_KEYS.authToken)
@@ -29,6 +49,7 @@ function App() {
   const [showRegister, setShowRegister] = useState(false)
   const [saveVisible, setSaveVisible] = useState(false)
   const [hudMenuOpen, setHudMenuOpen] = useState(false)
+  const [activityMenuOpen, setActivityMenuOpen] = useState(false)
 
   const [loginUsername, setLoginUsername] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
@@ -48,8 +69,10 @@ function App() {
   const [investmentError, setInvestmentError] = useState('')
   const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
+  const [activityRange, setActivityRange] = useState('all')
 
   const hudMenuRef = useRef(null)
+  const activityMenuRef = useRef(null)
   const saveTimerRef = useRef(null)
   const queryClient = useQueryClient()
 
@@ -123,14 +146,19 @@ function App() {
 
   useEffect(() => {
     const handleClick = (event) => {
-      if (!hudMenuRef.current) return
-      if (!hudMenuRef.current.contains(event.target)) {
+      const clickedHudMenu = hudMenuRef.current?.contains(event.target)
+      const clickedActivityMenu = activityMenuRef.current?.contains(event.target)
+      if (!clickedHudMenu) {
         setHudMenuOpen(false)
+      }
+      if (!clickedActivityMenu) {
+        setActivityMenuOpen(false)
       }
     }
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         setHudMenuOpen(false)
+        setActivityMenuOpen(false)
       }
     }
     document.addEventListener('click', handleClick)
@@ -489,9 +517,30 @@ function App() {
 
   const chartLabels = clientDistribution.map((client) => client.name.substring(0, 15))
   const chartBalances = clientDistribution.map((client) => client.balance)
-  const activityLabels = activityData?.days?.map(getGameDateString) || []
-  const activityDeposits = activityData?.cumulativeDeposits || []
-  const activityWithdrawals = activityData?.cumulativeWithdrawals || []
+  const activityRangeOption = useMemo(
+    () => ACTIVITY_RANGE_OPTIONS.find((option) => option.id === activityRange) || ACTIVITY_RANGE_OPTIONS[0],
+    [activityRange],
+  )
+  const activitySeries = useMemo(() => {
+    const days = activityData?.days || []
+    const deposits = activityData?.cumulativeDeposits || []
+    const withdrawals = activityData?.cumulativeWithdrawals || []
+    if (!days.length) {
+      return { labels: [], deposits: [], withdrawals: [] }
+    }
+    const windowSize = activityRangeOption.months
+      ? Math.min(activityRangeOption.months, days.length)
+      : days.length
+    const startIndex = Math.max(0, days.length - windowSize)
+    const sliceDays = days.slice(startIndex)
+    return {
+      labels: sliceDays.map((dayNumber, index) =>
+        formatActivityLabel(dayNumber, index, activityRangeOption.months),
+      ),
+      deposits: deposits.slice(startIndex),
+      withdrawals: withdrawals.slice(startIndex),
+    }
+  }, [activityData, activityRangeOption])
 
   const showHud = !['login', 'home'].includes(screen)
 
@@ -813,7 +862,7 @@ function App() {
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 analytics-grid">
               <div>
                 <label htmlFor="deposit-amount" className="bw-label">
                   Deposit:
@@ -939,8 +988,50 @@ function App() {
                 <p className="chart-title">Client Deposits</p>
               </div>
               <div>
+                <div className="chart-controls">
+                  <div className="hud-menu chart-range-menu" ref={activityMenuRef}>
+                    <button
+                      className="bw-button chart-range-toggle"
+                      type="button"
+                      aria-expanded={activityMenuOpen}
+                      aria-haspopup="true"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setActivityMenuOpen((prev) => !prev)
+                      }}
+                    >
+                      <span className="chart-range-label">{activityRangeOption.label}</span>
+                      <span className="dropdown-arrow" aria-hidden="true">
+                        ▾
+                      </span>
+                    </button>
+                    <div
+                      className={`hud-menu-panel chart-range-panel${activityMenuOpen ? ' open' : ''}`}
+                      role="menu"
+                    >
+                      {ACTIVITY_RANGE_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          className="bw-button hud-menu-item chart-range-item"
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setActivityRange(option.id)
+                            setActivityMenuOpen(false)
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
                 <div className="chart-container">
-                  <ActivityChart labels={activityLabels} deposits={activityDeposits} withdrawals={activityWithdrawals} />
+                  <ActivityChart
+                    labels={activitySeries.labels}
+                    deposits={activitySeries.deposits}
+                    withdrawals={activitySeries.withdrawals}
+                  />
                 </div>
                 <p className="chart-title">Activity Over Time</p>
               </div>

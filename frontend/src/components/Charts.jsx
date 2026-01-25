@@ -96,12 +96,22 @@ export function ActivityChart({ labels, deposits, withdrawals }) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         scales: {
-          y: { beginAtZero: true },
-          x: { display: true },
+          y: { beginAtZero: true, ticks: { maxTicksLimit: 6 } },
+          x: {
+            display: true,
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 10,
+              maxRotation: 35,
+              minRotation: 0,
+            },
+          },
         },
         plugins: {
           legend: { position: 'bottom' },
+          tooltip: { mode: 'index', intersect: false },
         },
       },
     })
