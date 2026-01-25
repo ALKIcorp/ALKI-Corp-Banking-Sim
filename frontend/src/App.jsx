@@ -315,6 +315,7 @@ function App() {
     queryKey: ['products', currentSlot],
     queryFn: () => apiFetch(`${API_BASE}/${currentSlot}/products`),
     enabled: Boolean(token && currentSlot),
+    refetchInterval: shouldPollBank || screen === 'property-market' ? POLL_INTERVAL_MS : false,
   })
 
   const adminProductsQuery = useQuery({
@@ -715,6 +716,11 @@ function App() {
   }, [clients])
   const baseLiquidCash = Number(bankState?.liquidCash ?? investmentState?.liquidCash ?? 0)
   const combinedLiquidCash = baseLiquidCash + totalClientFunds
+  const availablePropertyValue = useMemo(() => {
+    return availableProducts.reduce((sum, property) => sum + Number(property?.price || 0), 0)
+  }, [availableProducts])
+  const investedSp500Value = Number(bankState?.investedSp500 ?? investmentState?.investedSp500 ?? 0)
+  const dashboardTotalAssets = availablePropertyValue + investedSp500Value
   const clientNameById = useMemo(() => {
     const map = new Map()
     clients.forEach((client) => {
@@ -1634,7 +1640,7 @@ function App() {
                   Invested: $<span id="bank-invested-amount">{formatCurrency(bankState?.investedSp500 || 0)}</span>
                 </p>
                 <p className="font-semibold">
-                  Total Assets: $<span id="bank-total-assets">{formatCurrency(bankState?.totalAssets || 0)}</span>
+                  Total Assets: $<span id="bank-total-assets">{formatCurrency(dashboardTotalAssets)}</span>
                 </p>
               </div>
               <button className="bw-button" onClick={() => setScreen('add-client')}>
