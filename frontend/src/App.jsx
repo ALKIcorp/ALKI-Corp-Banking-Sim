@@ -73,7 +73,7 @@ function App() {
   const [hudMenuOpen, setHudMenuOpen] = useState(false)
   const [activityMenuOpen, setActivityMenuOpen] = useState(false)
   const [showClientsModal, setShowClientsModal] = useState(false)
-  const [showApplyOptions, setShowApplyOptions] = useState(false)
+  const [showClientTransactionsModal, setShowClientTransactionsModal] = useState(false)
   const [showLoanModal, setShowLoanModal] = useState(false)
   const [showMortgageModal, setShowMortgageModal] = useState(false)
   const [showPropertyModal, setShowPropertyModal] = useState(false)
@@ -862,10 +862,10 @@ function App() {
     divestMutation.mutate({ slotId: currentSlot, amount })
   }
 
-  const handleOpenApplyOptions = () => {
+  const handleOpenLoanCard = () => {
     setLoanApplicationError('')
     setMortgageApplicationError('')
-    setShowApplyOptions(true)
+    setShowLoanModal(true)
   }
 
   const handleLoanSubmit = () => {
@@ -1391,12 +1391,26 @@ function App() {
                 </p>
               </div>
             </div>
-            <div className="flex justify-end mb-4">
-              <button className="bw-button" onClick={handleOpenApplyOptions}>
-                <span className="btn-icon">📝</span> Apply
+            <div className="dual-action-card dual-action-card-left mb-4">
+              <button
+                className="dual-action-option dual-action-option-loan"
+                type="button"
+                onClick={handleOpenLoanCard}
+              >
+                <div className="dual-action-title">Apply For Loan</div>
+                <div className="dual-action-subtitle">Start a new loan request</div>
+              </button>
+              <div className="dual-action-divider" aria-hidden="true" />
+              <button
+                className="dual-action-option dual-action-option-properties"
+                type="button"
+                onClick={() => setScreen('property-market')}
+              >
+                <div className="dual-action-title">View Properties For Sale</div>
+                <div className="dual-action-subtitle">Browse listings and apply for mortgages</div>
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-4 analytics-grid">
+            <div className="grid grid-cols-2 gap-4 analytics-grid client-action-grid">
               <div>
                 <label htmlFor="deposit-amount" className="bw-label">
                   Deposit:
@@ -1429,9 +1443,6 @@ function App() {
                   value={withdrawAmount}
                   onChange={(event) => setWithdrawAmount(event.target.value)}
                 />
-                <p className="text-xs text-gray-500 mb-1">
-                  Limit: $<span id="client-view-withdraw-limit">{formatCurrency(DAILY_WITHDRAWAL_LIMIT)}</span> / Day
-                </p>
                 <button className="bw-button w-full" onClick={handleWithdraw} disabled={withdrawMutation.isPending}>
                   <span className="btn-icon">➖</span> Withdraw
                 </button>
@@ -1470,8 +1481,13 @@ function App() {
               </div>
             </div>
             <div className="transaction-log">
-              <h4>
-                <span className="header-icon">📜</span> Transaction History
+              <h4 className="flex items-center justify-between">
+                <span>
+                  <span className="header-icon">📜</span> Transaction History
+                </span>
+                <button className="bw-button" type="button" onClick={() => setShowClientTransactionsModal(true)}>
+                  View All
+                </button>
               </h4>
               <div id="client-log-area" className="log-area">
                 {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
@@ -1505,6 +1521,55 @@ function App() {
             <span className="btn-icon">🏦</span> Back to Bank View
           </button>
         </div>
+
+        {screen === 'client' && showClientTransactionsModal && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="All transactions"
+            onClick={() => setShowClientTransactionsModal(false)}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <button
+                className="bw-button modal-close"
+                type="button"
+                onClick={() => setShowClientTransactionsModal(false)}
+              >
+                Close
+              </button>
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
+                <span className="header-icon">📜</span> Transaction History
+              </h3>
+              <div className="modal-client-list border p-2 rounded bg-gray-100">
+                {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
+                {transactions.map((tx) => {
+                  const isDeposit =
+                    tx.type === 'DEPOSIT' ||
+                    tx.type === 'LOAN_DISBURSEMENT' ||
+                    tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING'
+                  const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
+                  const typeSymbol = isDeposit ? '➕' : '➖'
+                  const typeLabel = (() => {
+                    if (tx.type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
+                    if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
+                    if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
+                    return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
+                  })()
+                  return (
+                    <div className="log-entry" key={`modal-${tx.id}`}>
+                      <span className="text-gray-500">{getGameDateString(tx.gameDay)}:</span>{' '}
+                      <span className={typeClass}>
+                        {typeSymbol} {typeLabel}
+                      </span>{' '}
+                      <span>${formatCurrency(tx.amount)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div id="bank-view-screen" className={`screen ${screen === 'bank' ? 'active' : ''}`}>
           <div className="bw-panel">
@@ -1673,47 +1738,6 @@ function App() {
                       <span>Bal: ${formatCurrency(client.checkingBalance)}</span>
                     </div>
                   ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showApplyOptions && (
-          <div
-            className="modal-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Choose application type"
-            onClick={() => setShowApplyOptions(false)}
-          >
-            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
-              <button className="bw-button modal-close" type="button" onClick={() => setShowApplyOptions(false)}>
-                Close
-              </button>
-              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
-                <span className="header-icon">🧾</span> Apply For
-              </h3>
-              <div className="flex flex-col gap-2">
-                <button
-                  className="bw-button"
-                  type="button"
-                  onClick={() => {
-                    setShowApplyOptions(false)
-                    setShowLoanModal(true)
-                  }}
-                >
-                  Loan
-                </button>
-                <button
-                  className="bw-button"
-                  type="button"
-                  onClick={() => {
-                    setShowApplyOptions(false)
-                    setScreen('property-market')
-                  }}
-                >
-                  Mortgage
-                </button>
               </div>
             </div>
           </div>

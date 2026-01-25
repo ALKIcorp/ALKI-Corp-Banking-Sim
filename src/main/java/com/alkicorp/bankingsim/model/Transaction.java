@@ -34,7 +34,7 @@ public class Transaction {
     private Client client;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 20)
+    @Column(name = "type", nullable = false, length = 40)
     private TransactionType type;
 
     @Column(name = "amount", nullable = false, precision = 19, scale = 2)

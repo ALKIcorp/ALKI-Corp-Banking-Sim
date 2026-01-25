@@ -922,3 +922,20 @@ databaseChangeLog:
                   defaultValueNumeric: 0
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 20-expand-client-transaction-type
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: client_transaction
+          - columnExists:
+              tableName: client_transaction
+              columnName: type
+      changes:
+        - modifyDataType:
+            tableName: client_transaction
+            columnName: type
+            newDataType: VARCHAR(40)
