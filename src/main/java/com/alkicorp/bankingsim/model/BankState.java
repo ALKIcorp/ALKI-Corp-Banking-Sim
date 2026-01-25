@@ -43,6 +43,9 @@ public class BankState {
     @Column(name = "sp500_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal sp500Price;
 
+    @Column(name = "mortgage_rate", nullable = false, precision = 6, scale = 4)
+    private BigDecimal mortgageRate;
+
     @Column(name = "game_day", nullable = false)
     private Double gameDay;
 

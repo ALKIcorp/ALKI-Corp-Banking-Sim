@@ -3,12 +3,16 @@ package com.alkicorp.bankingsim.web;
 import com.alkicorp.bankingsim.service.BankService;
 import com.alkicorp.bankingsim.web.dto.BankStateResponse;
 import com.alkicorp.bankingsim.web.dto.SlotSummaryResponse;
+import com.alkicorp.bankingsim.web.dto.UpdateMortgageRateRequest;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,5 +36,12 @@ public class SlotController {
     @GetMapping("/{slotId}/bank")
     public BankStateResponse getBankState(@PathVariable int slotId) {
         return bankService.getBankState(slotId);
+    }
+
+    @PutMapping("/{slotId}/mortgage-rate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BankStateResponse updateMortgageRate(@PathVariable int slotId,
+                                                @RequestBody UpdateMortgageRateRequest request) {
+        return bankService.updateMortgageRate(slotId, request.getMortgageRate());
     }
 }

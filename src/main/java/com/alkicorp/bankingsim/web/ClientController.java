@@ -3,9 +3,11 @@ package com.alkicorp.bankingsim.web;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.Transaction;
 import com.alkicorp.bankingsim.service.ClientService;
+import com.alkicorp.bankingsim.service.ProductService;
 import com.alkicorp.bankingsim.web.dto.ClientResponse;
 import com.alkicorp.bankingsim.web.dto.CreateClientRequest;
 import com.alkicorp.bankingsim.web.dto.MoneyRequest;
+import com.alkicorp.bankingsim.web.dto.ProductResponse;
 import com.alkicorp.bankingsim.web.dto.TransactionResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ClientController {
 
     private final ClientService clientService;
+    private final ProductService productService;
 
     @GetMapping
     public List<ClientResponse> listClients(@PathVariable int slotId) {
@@ -47,6 +50,25 @@ public class ClientController {
     public List<TransactionResponse> getTransactions(@PathVariable int slotId, @PathVariable Long clientId) {
         List<Transaction> txs = clientService.getTransactions(clientId, slotId);
         return txs.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @GetMapping("/{clientId}/properties")
+    public List<ProductResponse> getOwnedProperties(@PathVariable int slotId, @PathVariable Long clientId) {
+        return productService.getOwnedProducts(slotId, clientId).stream()
+            .map(product -> ProductResponse.builder()
+                .id(product.getId())
+                .slotId(product.getSlotId())
+                .name(product.getName())
+                .price(product.getPrice())
+                .description(product.getDescription())
+                .rooms(product.getRooms())
+                .sqft2(product.getSqft2())
+                .imageUrl(product.getImageUrl())
+                .status(product.getStatus().name())
+                .ownerClientId(product.getOwnerClient() == null ? null : product.getOwnerClient().getId())
+                .createdAt(product.getCreatedAt())
+                .build())
+            .collect(Collectors.toList());
     }
 
     @PostMapping("/{clientId}/deposit")

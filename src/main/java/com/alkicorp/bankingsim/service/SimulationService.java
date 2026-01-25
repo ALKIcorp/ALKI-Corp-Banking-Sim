@@ -104,6 +104,7 @@ public class SimulationService {
         state.setLiquidCash(STARTING_CASH);
         state.setInvestedSp500(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         state.setSp500Price(SimulationConstants.SP500_INITIAL_PRICE);
+        state.setMortgageRate(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
         state.setGameDay(0d);
         state.setLastUpdateTimestamp(Instant.now(clock));
         state.setNextDividendDay(SimulationConstants.DAYS_PER_YEAR - 1);

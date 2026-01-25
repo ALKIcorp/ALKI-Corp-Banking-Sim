@@ -2,5 +2,6 @@ package com.alkicorp.bankingsim.model.enums;
 
 public enum TransactionType {
     DEPOSIT,
-    WITHDRAWAL
+    WITHDRAWAL,
+    LOAN_DISBURSEMENT
 }

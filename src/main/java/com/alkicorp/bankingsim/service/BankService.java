@@ -67,6 +67,20 @@ public class BankService {
     }
 
     @Transactional
+    public BankStateResponse updateMortgageRate(int slotId, BigDecimal mortgageRate) {
+        if (mortgageRate == null || mortgageRate.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid mortgage rate.");
+        }
+        User user = currentUserService.getCurrentUser();
+        BankState state = simulationService.getAndAdvanceState(user, slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
+        state.setMortgageRate(mortgageRate);
+        return toResponse(state);
+    }
+
+    @Transactional
     public BankStateResponse getBankState(int slotId) {
         User user = currentUserService.getCurrentUser();
         BankState state = simulationService.getAndAdvanceState(user, slotId)
@@ -85,6 +99,7 @@ public class BankService {
                 .investedSp500(state.getInvestedSp500())
                 .totalAssets(totalAssets)
                 .sp500Price(state.getSp500Price())
+                .mortgageRate(state.getMortgageRate())
                 .nextDividendDay(state.getNextDividendDay())
                 .nextGrowthDay(state.getNextGrowthDay())
                 .build();

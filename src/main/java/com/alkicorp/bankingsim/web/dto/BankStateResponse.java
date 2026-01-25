@@ -13,6 +13,7 @@ public class BankStateResponse {
     BigDecimal investedSp500;
     BigDecimal totalAssets;
     BigDecimal sp500Price;
+    BigDecimal mortgageRate;
     int nextDividendDay;
     int nextGrowthDay;
 }

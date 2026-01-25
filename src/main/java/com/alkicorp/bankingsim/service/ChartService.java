@@ -60,7 +60,8 @@ public class ChartService {
         Map<Integer, BigDecimal> deposits = new HashMap<>();
         Map<Integer, BigDecimal> withdrawals = new HashMap<>();
         for (Transaction tx : transactions) {
-            Map<Integer, BigDecimal> target = tx.getType() == TransactionType.DEPOSIT ? deposits : withdrawals;
+            Map<Integer, BigDecimal> target =
+                tx.getType() == TransactionType.WITHDRAWAL ? withdrawals : deposits;
             target.merge(tx.getGameDay(), tx.getAmount(), BigDecimal::add);
         }
 

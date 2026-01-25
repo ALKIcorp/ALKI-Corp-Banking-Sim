@@ -54,6 +54,11 @@ function App() {
   const [hudMenuOpen, setHudMenuOpen] = useState(false)
   const [activityMenuOpen, setActivityMenuOpen] = useState(false)
   const [showClientsModal, setShowClientsModal] = useState(false)
+  const [showApplyOptions, setShowApplyOptions] = useState(false)
+  const [showLoanModal, setShowLoanModal] = useState(false)
+  const [showMortgageModal, setShowMortgageModal] = useState(false)
+  const [showPropertyModal, setShowPropertyModal] = useState(false)
+  const [selectedProperty, setSelectedProperty] = useState(null)
 
   const [loginUsername, setLoginUsername] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
@@ -67,11 +72,27 @@ function App() {
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [investAmount, setInvestAmount] = useState('')
   const [divestAmount, setDivestAmount] = useState('')
+  const [loanAmount, setLoanAmount] = useState('')
+  const [loanTermYears, setLoanTermYears] = useState(15)
+  const [mortgageTermYears, setMortgageTermYears] = useState(30)
+  const [mortgageDownPayment, setMortgageDownPayment] = useState('')
+  const [productName, setProductName] = useState('')
+  const [productPrice, setProductPrice] = useState('')
+  const [productDescription, setProductDescription] = useState('')
+  const [productRooms, setProductRooms] = useState('')
+  const [productSqft, setProductSqft] = useState('')
+  const [productImageUrl, setProductImageUrl] = useState('')
+  const [editingProductId, setEditingProductId] = useState(null)
+  const [mortgageRateInput, setMortgageRateInput] = useState('')
   const [loginError, setLoginError] = useState('')
   const [registerError, setRegisterError] = useState('')
   const [clientError, setClientError] = useState('')
   const [addClientError, setAddClientError] = useState('')
   const [investmentError, setInvestmentError] = useState('')
+  const [productError, setProductError] = useState('')
+  const [loanApplicationError, setLoanApplicationError] = useState('')
+  const [mortgageApplicationError, setMortgageApplicationError] = useState('')
+  const [adminProductsError, setAdminProductsError] = useState('')
   const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
   const [activityRange, setActivityRange] = useState('all')
@@ -171,6 +192,10 @@ function App() {
         setHudMenuOpen(false)
         setActivityMenuOpen(false)
         setShowClientsModal(false)
+        setShowApplyOptions(false)
+        setShowLoanModal(false)
+        setShowMortgageModal(false)
+        setShowPropertyModal(false)
       }
     }
     document.addEventListener('click', handleClick)
@@ -202,7 +227,8 @@ function App() {
   const userLabel = useMemo(() => getUserLabel(token), [token])
   const isAdmin = adminStatus === true
 
-  const shouldPollBank = screen === 'bank' || screen === 'client' || screen === 'investment'
+  const shouldPollBank =
+    screen === 'bank' || screen === 'client' || screen === 'investment' || screen === 'property-market'
   const shouldPollClients = screen === 'bank' || screen === 'client'
   const shouldPollCharts = screen === 'bank'
 
@@ -253,6 +279,37 @@ function App() {
     queryFn: () => apiFetch(`${API_BASE}/${currentSlot}/charts/activity`),
     enabled: Boolean(token && currentSlot && screen === 'bank'),
     refetchInterval: shouldPollCharts ? POLL_INTERVAL_MS : false,
+  })
+
+  const productsQuery = useQuery({
+    queryKey: ['products', currentSlot],
+    queryFn: () => apiFetch(`${API_BASE}/${currentSlot}/products`),
+    enabled: Boolean(token && currentSlot),
+  })
+
+  const adminProductsQuery = useQuery({
+    queryKey: ['products', currentSlot, 'admin'],
+    queryFn: () => apiFetch(`${API_BASE}/${currentSlot}/products/all`),
+    enabled: Boolean(token && currentSlot && isAdmin),
+  })
+
+  const loansQuery = useQuery({
+    queryKey: ['loans', currentSlot],
+    queryFn: () => apiFetch(`${API_BASE}/${currentSlot}/loans`),
+    enabled: Boolean(token && currentSlot && screen === 'products'),
+  })
+
+  const mortgagesQuery = useQuery({
+    queryKey: ['mortgages', currentSlot],
+    queryFn: () => apiFetch(`${API_BASE}/${currentSlot}/mortgages`),
+    enabled: Boolean(token && currentSlot && screen === 'products'),
+  })
+
+  const ownedPropertiesQuery = useQuery({
+    queryKey: ['client-properties', currentSlot, selectedClientId],
+    queryFn: () =>
+      apiFetch(`${API_BASE}/${currentSlot}/clients/${selectedClientId}/properties`),
+    enabled: Boolean(token && currentSlot && selectedClientId && screen === 'client'),
   })
 
   const loginMutation = useMutation({
@@ -405,6 +462,159 @@ function App() {
     },
   })
 
+  const createLoanMutation = useMutation({
+    mutationFn: ({ slotId, clientId, amount, termYears }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${clientId}/loans`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, termYears }),
+      }),
+    onSuccess: () => {
+      setLoanAmount('')
+      setLoanApplicationError('')
+      setShowLoanModal(false)
+      queryClient.invalidateQueries({ queryKey: ['loans', currentSlot] })
+      triggerSaveIndicator()
+    },
+    onError: (error) => {
+      setLoanApplicationError(error.message)
+    },
+  })
+
+  const createMortgageMutation = useMutation({
+    mutationFn: ({ slotId, clientId, productId, termYears, downPayment }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${clientId}/mortgages`, {
+        method: 'POST',
+        body: JSON.stringify({ productId, termYears, downPayment }),
+      }),
+    onSuccess: () => {
+      setMortgageDownPayment('')
+      setMortgageApplicationError('')
+      setShowMortgageModal(false)
+      setShowPropertyModal(false)
+      setSelectedProperty(null)
+      queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
+      triggerSaveIndicator()
+    },
+    onError: (error) => {
+      setMortgageApplicationError(error.message)
+    },
+  })
+
+  const createProductMutation = useMutation({
+    mutationFn: ({ slotId, payload }) =>
+      apiFetch(`${API_BASE}/${slotId}/products`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      setProductName('')
+      setProductPrice('')
+      setProductDescription('')
+      setProductRooms('')
+      setProductSqft('')
+      setProductImageUrl('')
+      setEditingProductId(null)
+      setProductError('')
+      setAdminProductsError('')
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot, 'admin'] })
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      triggerSaveIndicator()
+    },
+    onError: (error) => {
+      setProductError(error.message)
+    },
+  })
+
+  const updateProductMutation = useMutation({
+    mutationFn: ({ slotId, productId, payload }) =>
+      apiFetch(`${API_BASE}/${slotId}/products/${productId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      setEditingProductId(null)
+      setProductError('')
+      setAdminProductsError('')
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot, 'admin'] })
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      triggerSaveIndicator()
+    },
+    onError: (error) => {
+      setProductError(error.message)
+    },
+  })
+
+  const deleteProductMutation = useMutation({
+    mutationFn: ({ slotId, productId }) =>
+      apiFetch(`${API_BASE}/${slotId}/products/${productId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      setAdminProductsError('')
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot, 'admin'] })
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      triggerSaveIndicator()
+    },
+    onError: (error) => {
+      setAdminProductsError(error.message)
+    },
+  })
+
+  const approveLoanMutation = useMutation({
+    mutationFn: ({ slotId, loanId }) =>
+      apiFetch(`${API_BASE}/${slotId}/loans/${loanId}/approve`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loans', currentSlot] })
+      triggerSaveIndicator()
+    },
+  })
+
+  const rejectLoanMutation = useMutation({
+    mutationFn: ({ slotId, loanId }) =>
+      apiFetch(`${API_BASE}/${slotId}/loans/${loanId}/reject`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loans', currentSlot] })
+      triggerSaveIndicator()
+    },
+  })
+
+  const approveMortgageMutation = useMutation({
+    mutationFn: ({ slotId, mortgageId }) =>
+      apiFetch(`${API_BASE}/${slotId}/mortgages/${mortgageId}/approve`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['client-properties', currentSlot, selectedClientId] })
+      triggerSaveIndicator()
+    },
+  })
+
+  const rejectMortgageMutation = useMutation({
+    mutationFn: ({ slotId, mortgageId }) =>
+      apiFetch(`${API_BASE}/${slotId}/mortgages/${mortgageId}/reject`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
+      triggerSaveIndicator()
+    },
+  })
+
+  const updateMortgageRateMutation = useMutation({
+    mutationFn: ({ slotId, mortgageRate }) =>
+      apiFetch(`${API_BASE}/${slotId}/mortgage-rate`, {
+        method: 'PUT',
+        body: JSON.stringify({ mortgageRate }),
+      }),
+    onSuccess: () => {
+      setMortgageRateInput('')
+      setAdminProductsError('')
+      queryClient.invalidateQueries({ queryKey: ['bank', currentSlot] })
+      triggerSaveIndicator()
+    },
+    onError: (error) => {
+      setAdminProductsError(error.message)
+    },
+  })
+
   const slots = slotsQuery.data || []
   const bankState = bankStateQuery.data
   const clients = clientsQuery.data || []
@@ -412,8 +622,14 @@ function App() {
   const investmentState = investmentQuery.data
   const clientDistribution = clientDistributionQuery.data?.clients || []
   const activityData = activityChartQuery.data
+  const availableProducts = productsQuery.data || []
+  const adminProducts = adminProductsQuery.data || []
+  const loans = loansQuery.data || []
+  const mortgages = mortgagesQuery.data || []
+  const ownedProperties = ownedPropertiesQuery.data || []
 
   const selectedClient = clients.find((client) => String(client.id) === String(selectedClientId))
+  const mortgageRate = Number(bankState?.mortgageRate || 0)
 
   const hudDate = bankState ? getGameDateString(bankState.gameDay) : '---'
   const hudMode = useMemo(() => {
@@ -423,6 +639,7 @@ function App() {
     if (screen === 'investment') return 'Bank > Investments'
     if (screen === 'products') return 'Bank > Client Products'
     if (screen === 'admin-products') return 'Bank > Admin Products'
+    if (screen === 'property-market') return 'Bank > Property Market'
     return '---'
   }, [screen, selectedClient])
 
@@ -485,6 +702,12 @@ function App() {
   }, [isAdmin, screen])
 
   useEffect(() => {
+    if (screen === 'admin-products' && bankState?.mortgageRate !== undefined) {
+      setMortgageRateInput(String(bankState.mortgageRate))
+    }
+  }, [bankState?.mortgageRate, screen])
+
+  useEffect(() => {
     if (screen !== 'add-client') return
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -545,6 +768,127 @@ function App() {
     divestMutation.mutate({ slotId: currentSlot, amount })
   }
 
+  const handleOpenApplyOptions = () => {
+    setLoanApplicationError('')
+    setMortgageApplicationError('')
+    setShowApplyOptions(true)
+  }
+
+  const handleLoanSubmit = () => {
+    if (!currentSlot || !selectedClientId) return
+    const amount = Number(loanAmount)
+    if (!amount || amount <= 0) {
+      setLoanApplicationError('Loan amount must be greater than zero.')
+      return
+    }
+    if (!loanTermYears || loanTermYears < 5 || loanTermYears > 30) {
+      setLoanApplicationError('Term must be between 5 and 30 years.')
+      return
+    }
+    createLoanMutation.mutate({
+      slotId: currentSlot,
+      clientId: selectedClientId,
+      amount,
+      termYears: loanTermYears,
+    })
+  }
+
+  const handleMortgageSubmit = () => {
+    if (!currentSlot || !selectedClientId || !selectedProperty) return
+    const downPayment = Number(mortgageDownPayment || 0)
+    if (downPayment < 0) {
+      setMortgageApplicationError('Down payment cannot be negative.')
+      return
+    }
+    if (!mortgageTermYears || mortgageTermYears < 5 || mortgageTermYears > 30) {
+      setMortgageApplicationError('Term must be between 5 and 30 years.')
+      return
+    }
+    createMortgageMutation.mutate({
+      slotId: currentSlot,
+      clientId: selectedClientId,
+      productId: selectedProperty.id,
+      termYears: mortgageTermYears,
+      downPayment,
+    })
+  }
+
+  const handleSubmitProduct = () => {
+    if (!currentSlot) return
+    const price = Number(productPrice)
+    const rooms = Number(productRooms)
+    const sqft2 = Number(productSqft)
+    if (!productName.trim()) {
+      setProductError('Property name is required.')
+      return
+    }
+    if (!price || price <= 0) {
+      setProductError('Price must be greater than zero.')
+      return
+    }
+    if (!productDescription.trim()) {
+      setProductError('Description is required.')
+      return
+    }
+    if (!rooms || rooms <= 0) {
+      setProductError('Rooms must be greater than zero.')
+      return
+    }
+    if (!sqft2 || sqft2 <= 0) {
+      setProductError('Square footage must be greater than zero.')
+      return
+    }
+    const payload = {
+      name: productName.trim(),
+      price,
+      description: productDescription.trim(),
+      rooms,
+      sqft2,
+      imageUrl: productImageUrl.trim() || null,
+    }
+    if (editingProductId) {
+      updateProductMutation.mutate({
+        slotId: currentSlot,
+        productId: editingProductId,
+        payload,
+      })
+      return
+    }
+    createProductMutation.mutate({ slotId: currentSlot, payload })
+  }
+
+  const handleEditProduct = (product) => {
+    setEditingProductId(product.id)
+    setProductName(product.name)
+    setProductPrice(String(product.price))
+    setProductDescription(product.description)
+    setProductRooms(String(product.rooms))
+    setProductSqft(String(product.sqft2))
+    setProductImageUrl(product.imageUrl || '')
+    setProductError('')
+  }
+
+  const handleCancelProductEdit = () => {
+    setEditingProductId(null)
+    setProductName('')
+    setProductPrice('')
+    setProductDescription('')
+    setProductRooms('')
+    setProductSqft('')
+    setProductImageUrl('')
+    setProductError('')
+  }
+
+  const handleUpdateMortgageRate = () => {
+    if (!currentSlot) return
+    const rate = Number(mortgageRateInput)
+    if (Number.isNaN(rate) || rate < 0) {
+      setAdminProductsError('Mortgage rate must be a non-negative number.')
+      return
+    }
+    updateMortgageRateMutation.mutate({ slotId: currentSlot, mortgageRate: rate })
+  }
+
   const handleLoginSubmit = (event) => {
     event.preventDefault()
     if (!loginUsername || !loginPassword) {
@@ -600,6 +944,21 @@ function App() {
       withdrawals: withdrawals.slice(startIndex),
     }
   }, [activityData, activityRangeOption])
+
+  const mortgagePayment = useMemo(() => {
+    if (!selectedProperty) return null
+    const price = Number(selectedProperty.price || 0)
+    const downPaymentValue = Number(mortgageDownPayment || 0)
+    const principal = Math.max(price - downPaymentValue, 0)
+    const months = Number(mortgageTermYears || 0) * 12
+    if (!months || principal <= 0) return null
+    const monthlyRate = mortgageRate / 12
+    if (!monthlyRate) {
+      return principal / months
+    }
+    const factor = Math.pow(1 + monthlyRate, months)
+    return (principal * monthlyRate * factor) / (factor - 1)
+  }, [mortgageDownPayment, mortgageRate, mortgageTermYears, selectedProperty])
 
   const showHud = !['login', 'home'].includes(screen)
 
@@ -927,6 +1286,11 @@ function App() {
                 </p>
               </div>
             </div>
+            <div className="flex justify-end mb-4">
+              <button className="bw-button" onClick={handleOpenApplyOptions}>
+                <span className="btn-icon">📝</span> Apply
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-4 analytics-grid">
               <div>
                 <label htmlFor="deposit-amount" className="bw-label">
@@ -973,18 +1337,50 @@ function App() {
             </p>
             <div className="transaction-log">
               <h4>
+                <span className="header-icon">🏠</span> Assets
+              </h4>
+              <div className="property-grid">
+                {!ownedProperties.length && (
+                  <p className="text-xs text-gray-500">No properties owned yet.</p>
+                )}
+                {ownedProperties.map((property) => (
+                  <div key={property.id} className="property-card">
+                    {property.imageUrl ? (
+                      <div
+                        className="property-image"
+                        style={{ backgroundImage: `url(${property.imageUrl})` }}
+                      />
+                    ) : (
+                      <div className="property-image property-image-placeholder">No Image</div>
+                    )}
+                    <div className="property-body">
+                      <div className="property-title">{property.name}</div>
+                      <div className="property-meta">
+                        {property.rooms} rooms • {property.sqft2} sqft
+                      </div>
+                      <div className="property-price">${formatCurrency(property.price)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="transaction-log">
+              <h4>
                 <span className="header-icon">📜</span> Transaction History
               </h4>
               <div id="client-log-area" className="log-area">
                 {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
                 {transactions.map((tx) => {
-                  const typeClass = tx.type === 'DEPOSIT' ? 'log-type-deposit' : 'log-type-withdrawal'
-                  const typeSymbol = tx.type === 'DEPOSIT' ? '➕' : '➖'
+                  const isDeposit = tx.type === 'DEPOSIT' || tx.type === 'LOAN_DISBURSEMENT'
+                  const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
+                  const typeSymbol = isDeposit ? '➕' : '➖'
+                  const typeLabel =
+                    tx.type === 'LOAN_DISBURSEMENT' ? 'Loan Disbursement' : tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
                   return (
                     <div className="log-entry" key={tx.id}>
                       <span className="text-gray-500">{getGameDateString(tx.gameDay)}:</span>{' '}
                       <span className={typeClass}>
-                        {typeSymbol} {tx.type.charAt(0) + tx.type.slice(1).toLowerCase()}
+                        {typeSymbol} {typeLabel}
                       </span>{' '}
                       <span>${formatCurrency(tx.amount)}</span>
                     </div>
@@ -1170,6 +1566,232 @@ function App() {
           </div>
         )}
 
+        {showApplyOptions && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Choose application type"
+            onClick={() => setShowApplyOptions(false)}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <button className="bw-button modal-close" type="button" onClick={() => setShowApplyOptions(false)}>
+                Close
+              </button>
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
+                <span className="header-icon">🧾</span> Apply For
+              </h3>
+              <div className="flex flex-col gap-2">
+                <button
+                  className="bw-button"
+                  type="button"
+                  onClick={() => {
+                    setShowApplyOptions(false)
+                    setShowLoanModal(true)
+                  }}
+                >
+                  Loan
+                </button>
+                <button
+                  className="bw-button"
+                  type="button"
+                  onClick={() => {
+                    setShowApplyOptions(false)
+                    setScreen('property-market')
+                  }}
+                >
+                  Mortgage
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showLoanModal && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loan application"
+            onClick={() => setShowLoanModal(false)}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <button className="bw-button modal-close" type="button" onClick={() => setShowLoanModal(false)}>
+                Close
+              </button>
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
+                <span className="header-icon">📄</span> Loan Application
+              </h3>
+              <label htmlFor="loan-amount" className="bw-label">
+                Loan Amount
+              </label>
+              <input
+                type="number"
+                id="loan-amount"
+                className="bw-input"
+                min="0"
+                step="0.01"
+                value={loanAmount}
+                onChange={(event) => setLoanAmount(event.target.value)}
+              />
+              <label htmlFor="loan-term" className="bw-label mt-2">
+                Term Years
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  id="loan-term"
+                  min="5"
+                  max="30"
+                  value={loanTermYears}
+                  onChange={(event) => setLoanTermYears(Number(event.target.value))}
+                />
+                <input
+                  type="number"
+                  className="bw-input w-20"
+                  min="5"
+                  max="30"
+                  value={loanTermYears}
+                  onChange={(event) => setLoanTermYears(Number(event.target.value))}
+                />
+              </div>
+              <p className="text-red-600 text-xs mt-2 text-center">{loanApplicationError}</p>
+              <button
+                className="bw-button w-full mt-2"
+                type="button"
+                onClick={handleLoanSubmit}
+                disabled={createLoanMutation.isPending}
+              >
+                Submit Loan Application
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showPropertyModal && selectedProperty && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Property details"
+            onClick={() => {
+              setShowPropertyModal(false)
+              setSelectedProperty(null)
+            }}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <button
+                className="bw-button modal-close"
+                type="button"
+                onClick={() => {
+                  setShowPropertyModal(false)
+                  setSelectedProperty(null)
+                }}
+              >
+                Close
+              </button>
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
+                <span className="header-icon">🏘</span> {selectedProperty.name}
+              </h3>
+              {selectedProperty.imageUrl ? (
+                <div
+                  className="property-modal-image"
+                  style={{ backgroundImage: `url(${selectedProperty.imageUrl})` }}
+                />
+              ) : (
+                <div className="property-modal-image property-image-placeholder">No Image</div>
+              )}
+              <p className="text-sm font-semibold mt-2">${formatCurrency(selectedProperty.price)}</p>
+              <p className="text-xs text-gray-600">
+                {selectedProperty.rooms} rooms • {selectedProperty.sqft2} sqft
+              </p>
+              <p className="text-xs mt-2">{selectedProperty.description}</p>
+              <button
+                className="bw-button w-full mt-3"
+                type="button"
+                onClick={() => {
+                  setShowPropertyModal(false)
+                  setShowMortgageModal(true)
+                }}
+              >
+                Apply for Mortgage
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showMortgageModal && selectedProperty && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mortgage application"
+            onClick={() => setShowMortgageModal(false)}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <button className="bw-button modal-close" type="button" onClick={() => setShowMortgageModal(false)}>
+                Close
+              </button>
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
+                <span className="header-icon">🏡</span> Mortgage Application
+              </h3>
+              <p className="text-xs text-gray-600">
+                Property: {selectedProperty.name} • ${formatCurrency(selectedProperty.price)}
+              </p>
+              <label htmlFor="mortgage-term" className="bw-label mt-2">
+                Term Years
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  id="mortgage-term"
+                  min="5"
+                  max="30"
+                  value={mortgageTermYears}
+                  onChange={(event) => setMortgageTermYears(Number(event.target.value))}
+                />
+                <input
+                  type="number"
+                  className="bw-input w-20"
+                  min="5"
+                  max="30"
+                  value={mortgageTermYears}
+                  onChange={(event) => setMortgageTermYears(Number(event.target.value))}
+                />
+              </div>
+              <label htmlFor="mortgage-down-payment" className="bw-label mt-2">
+                Down Payment
+              </label>
+              <input
+                type="number"
+                id="mortgage-down-payment"
+                className="bw-input"
+                min="0"
+                step="0.01"
+                value={mortgageDownPayment}
+                onChange={(event) => setMortgageDownPayment(event.target.value)}
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Fixed rate: {(mortgageRate * 100).toFixed(2)}%
+              </p>
+              <p className="mortgage-payment-preview">
+                {mortgagePayment
+                  ? `Estimated monthly payment: $${formatCurrency(mortgagePayment)}`
+                  : 'Enter term and down payment to see monthly payment.'}
+              </p>
+              <p className="text-red-600 text-xs mt-2 text-center">{mortgageApplicationError}</p>
+              <button
+                className="bw-button w-full mt-2"
+                type="button"
+                onClick={handleMortgageSubmit}
+                disabled={createMortgageMutation.isPending}
+              >
+                Submit Mortgage Application
+              </button>
+            </div>
+          </div>
+        )}
+
         <div id="investment-view-screen" className={`screen ${screen === 'investment' ? 'active' : ''}`}>
           <div className="bw-panel">
             <h2 className="bw-header">
@@ -1248,12 +1870,172 @@ function App() {
           </div>
         </div>
 
+        <div id="property-market-screen" className={`screen ${screen === 'property-market' ? 'active' : ''}`}>
+          <div className="bw-panel">
+            <h2 className="bw-header">
+              <span className="header-icon">🏘</span> Property Market
+            </h2>
+            <div className="property-grid property-grid-scroll">
+              {!availableProducts.length && (
+                <p className="text-xs text-gray-500">No properties available right now.</p>
+              )}
+              {availableProducts.map((property) => (
+                <div key={property.id} className="property-card">
+                  {property.imageUrl ? (
+                    <div
+                      className="property-image"
+                      style={{ backgroundImage: `url(${property.imageUrl})` }}
+                    />
+                  ) : (
+                    <div className="property-image property-image-placeholder">No Image</div>
+                  )}
+                  <div className="property-body">
+                    <div className="property-title">{property.name}</div>
+                    <div className="property-description">{property.description}</div>
+                    <div className="property-price">${formatCurrency(property.price)}</div>
+                    <button
+                      className="bw-button w-full mt-2"
+                      type="button"
+                      onClick={() => {
+                        setSelectedProperty(property)
+                        setShowPropertyModal(true)
+                      }}
+                    >
+                      View Property
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="bw-button mt-2 self-center" onClick={() => setScreen('client')}>
+              <span className="btn-icon">↩</span> Back to Client
+            </button>
+          </div>
+        </div>
+
         <div id="products-view-screen" className={`screen ${screen === 'products' ? 'active' : ''}`}>
           <div className="bw-panel">
             <h2 className="bw-header">
               <span className="header-icon">🧰</span> Manage Client Products
             </h2>
-            <p className="text-sm mb-2 text-center">Client products dashboard coming soon.</p>
+            <div className="product-admin-section">
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
+                <span className="header-icon">📄</span> Loan Applications
+              </h3>
+              {!loans.length && <p className="text-xs text-gray-500">No loan applications yet.</p>}
+              {loans.length > 0 && (
+                <div className="table-scroll">
+                  <table className="bw-table">
+                    <thead>
+                      <tr>
+                        <th>Client</th>
+                        <th>Amount</th>
+                        <th>Term</th>
+                        <th>Status</th>
+                        {isAdmin && <th>Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loans.map((loan) => (
+                        <tr key={loan.id}>
+                          <td>{loan.clientId}</td>
+                          <td>${formatCurrency(loan.amount)}</td>
+                          <td>{loan.termYears} yrs</td>
+                          <td>{loan.status}</td>
+                          {isAdmin && (
+                            <td>
+                              {loan.status === 'PENDING' ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    className="bw-button"
+                                    onClick={() => approveLoanMutation.mutate({ slotId: currentSlot, loanId: loan.id })}
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    className="bw-button"
+                                    onClick={() => rejectLoanMutation.mutate({ slotId: currentSlot, loanId: loan.id })}
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500">Processed</span>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="product-admin-section">
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
+                <span className="header-icon">🏡</span> Mortgage Applications
+              </h3>
+              {!mortgages.length && <p className="text-xs text-gray-500">No mortgage applications yet.</p>}
+              {mortgages.length > 0 && (
+                <div className="table-scroll">
+                  <table className="bw-table">
+                    <thead>
+                      <tr>
+                        <th>Client</th>
+                        <th>Property</th>
+                        <th>Loan</th>
+                        <th>Term</th>
+                        <th>Status</th>
+                        {isAdmin && <th>Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mortgages.map((mortgage) => (
+                        <tr key={mortgage.id}>
+                          <td>{mortgage.clientId}</td>
+                          <td>{mortgage.productId}</td>
+                          <td>${formatCurrency(mortgage.loanAmount)}</td>
+                          <td>{mortgage.termYears} yrs</td>
+                          <td>{mortgage.status}</td>
+                          {isAdmin && (
+                            <td>
+                              {mortgage.status === 'PENDING' ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    className="bw-button"
+                                    onClick={() =>
+                                      approveMortgageMutation.mutate({
+                                        slotId: currentSlot,
+                                        mortgageId: mortgage.id,
+                                      })
+                                    }
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    className="bw-button"
+                                    onClick={() =>
+                                      rejectMortgageMutation.mutate({
+                                        slotId: currentSlot,
+                                        mortgageId: mortgage.id,
+                                      })
+                                    }
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500">Processed</span>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
             <button className="bw-button mt-2 self-center" onClick={() => setScreen('bank')}>
               <span className="btn-icon">🏦</span> Back to Bank View
             </button>
@@ -1267,6 +2049,168 @@ function App() {
             <h2 className="bw-header">
               <span className="header-icon">🛠</span> Add/Edit Products
             </h2>
+            <div className="product-admin-section">
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
+                <span className="header-icon">📈</span> Mortgage Rate
+              </h3>
+              <div className="flex gap-2 items-end">
+                <div className="flex-grow">
+                  <label htmlFor="mortgage-rate-input" className="bw-label">
+                    Fixed Mortgage Rate (decimal, e.g. 0.045)
+                  </label>
+                  <input
+                    id="mortgage-rate-input"
+                    className="bw-input"
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={mortgageRateInput}
+                    onChange={(event) => setMortgageRateInput(event.target.value)}
+                  />
+                </div>
+                <button
+                  className="bw-button"
+                  type="button"
+                  onClick={handleUpdateMortgageRate}
+                  disabled={updateMortgageRateMutation.isPending}
+                >
+                  Save Rate
+                </button>
+              </div>
+            </div>
+            <div className="product-admin-section">
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
+                <span className="header-icon">🏠</span> Property Listing
+              </h3>
+              <label htmlFor="product-name" className="bw-label">
+                Property Name
+              </label>
+              <input
+                id="product-name"
+                className="bw-input"
+                type="text"
+                value={productName}
+                onChange={(event) => setProductName(event.target.value)}
+              />
+              <label htmlFor="product-price" className="bw-label mt-2">
+                Price
+              </label>
+              <input
+                id="product-price"
+                className="bw-input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={productPrice}
+                onChange={(event) => setProductPrice(event.target.value)}
+              />
+              <label htmlFor="product-description" className="bw-label mt-2">
+                Description
+              </label>
+              <textarea
+                id="product-description"
+                className="bw-input"
+                rows="3"
+                value={productDescription}
+                onChange={(event) => setProductDescription(event.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <label htmlFor="product-rooms" className="bw-label">
+                    Rooms
+                  </label>
+                  <input
+                    id="product-rooms"
+                    className="bw-input"
+                    type="number"
+                    min="1"
+                    value={productRooms}
+                    onChange={(event) => setProductRooms(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="product-sqft" className="bw-label">
+                    Sqft
+                  </label>
+                  <input
+                    id="product-sqft"
+                    className="bw-input"
+                    type="number"
+                    min="1"
+                    value={productSqft}
+                    onChange={(event) => setProductSqft(event.target.value)}
+                  />
+                </div>
+              </div>
+              <label htmlFor="product-image" className="bw-label mt-2">
+                Image URL
+              </label>
+              <input
+                id="product-image"
+                className="bw-input"
+                type="text"
+                value={productImageUrl}
+                onChange={(event) => setProductImageUrl(event.target.value)}
+              />
+              <p className="text-red-600 text-xs mt-2 text-center">{productError || adminProductsError}</p>
+              <div className="flex gap-2 justify-end mt-2">
+                {editingProductId && (
+                  <button className="bw-button" type="button" onClick={handleCancelProductEdit}>
+                    Cancel
+                  </button>
+                )}
+                <button
+                  className="bw-button"
+                  type="button"
+                  onClick={handleSubmitProduct}
+                  disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                >
+                  {editingProductId ? 'Update Property' : 'Create Property'}
+                </button>
+              </div>
+            </div>
+            <div className="product-admin-section">
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
+                <span className="header-icon">📋</span> Existing Properties
+              </h3>
+              <div className="property-grid property-grid-scroll">
+                {!adminProducts.length && (
+                  <p className="text-xs text-gray-500">No properties added yet.</p>
+                )}
+                {adminProducts.map((property) => (
+                  <div key={property.id} className="property-card">
+                    {property.imageUrl ? (
+                      <div
+                        className="property-image"
+                        style={{ backgroundImage: `url(${property.imageUrl})` }}
+                      />
+                    ) : (
+                      <div className="property-image property-image-placeholder">No Image</div>
+                    )}
+                    <div className="property-body">
+                      <div className="property-title">{property.name}</div>
+                      <div className="property-description">{property.description}</div>
+                      <div className="property-price">${formatCurrency(property.price)}</div>
+                      <div className="property-meta">Status: {property.status}</div>
+                      <div className="flex gap-2 mt-2">
+                        <button className="bw-button" type="button" onClick={() => handleEditProduct(property)}>
+                          Edit
+                        </button>
+                        <button
+                          className="bw-button"
+                          type="button"
+                          onClick={() =>
+                            deleteProductMutation.mutate({ slotId: currentSlot, productId: property.id })
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <button className="bw-button mt-2 self-center" onClick={() => setScreen('bank')}>
               <span className="btn-icon">🏦</span> Back to Bank View
             </button>

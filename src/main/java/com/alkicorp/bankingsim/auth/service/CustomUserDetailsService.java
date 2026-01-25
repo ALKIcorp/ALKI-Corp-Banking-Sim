@@ -2,6 +2,7 @@ package com.alkicorp.bankingsim.auth.service;
 
 import com.alkicorp.bankingsim.auth.model.User;
 import com.alkicorp.bankingsim.auth.repository.UserRepository;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,9 +25,12 @@ public class CustomUserDetailsService implements UserDetailsService {
             .or(() -> userRepository.findByEmailIgnoreCase(usernameOrEmail))
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>(user.getRoles().stream()
             .map(role -> new SimpleGrantedAuthority(role.getName()))
-            .toList();
+            .toList());
+        if (user.isAdminStatus()) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
 
         return new org.springframework.security.core.userdetails.User(
             user.getUsername(),
