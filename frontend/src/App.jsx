@@ -50,6 +50,7 @@ function App() {
   const [saveVisible, setSaveVisible] = useState(false)
   const [hudMenuOpen, setHudMenuOpen] = useState(false)
   const [activityMenuOpen, setActivityMenuOpen] = useState(false)
+  const [showClientsModal, setShowClientsModal] = useState(false)
 
   const [loginUsername, setLoginUsername] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
@@ -159,6 +160,7 @@ function App() {
       if (event.key === 'Escape') {
         setHudMenuOpen(false)
         setActivityMenuOpen(false)
+        setShowClientsModal(false)
       }
     }
     document.addEventListener('click', handleClick)
@@ -584,7 +586,7 @@ function App() {
         <div className="hud" id="game-hud" style={{ display: showHud ? 'flex' : 'none' }}>
           <div>
             <span>
-              Mode: <span id="hud-mode">{hudMode}</span>
+              <span id="hud-mode">{hudMode}</span>
             </span>{' '}
             |{' '}
             <span>
@@ -984,6 +986,13 @@ function App() {
 
             <h3 className="text-sm font-semibold mb-2 border-t pt-2 uppercase flex items-center gap-2">
               <span className="header-icon">👥</span> Clients
+              <button
+                className="bw-button"
+                type="button"
+                onClick={() => setShowClientsModal(true)}
+              >
+                View All
+              </button>
             </h3>
             <div id="client-list" className="mb-4 max-h-32 overflow-y-auto border p-2 rounded bg-gray-100">
               {!clients.length && <p className="text-xs text-gray-500">No clients yet.</p>}
@@ -1077,6 +1086,48 @@ function App() {
             </div>
           </div>
         </div>
+
+        {screen === 'bank' && showClientsModal && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="All clients"
+            onClick={() => setShowClientsModal(false)}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <button
+                className="bw-button modal-close"
+                type="button"
+                onClick={() => setShowClientsModal(false)}
+              >
+                Close
+              </button>
+              <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2 modal-header">
+                <span className="header-icon">👥</span> Clients
+              </h3>
+              <div className="modal-client-list border p-2 rounded bg-gray-100">
+                {!clients.length && <p className="text-xs text-gray-500">No clients yet.</p>}
+                {[...clients]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((client) => (
+                    <div
+                      key={client.id}
+                      className="flex justify-between items-center text-xs p-2 hover:bg-gray-200 cursor-pointer rounded border border-transparent hover:border-gray-500"
+                      onClick={() => {
+                        setSelectedClientId(client.id)
+                        setScreen('client')
+                        setShowClientsModal(false)
+                      }}
+                    >
+                      <span>{client.name}</span>
+                      <span>Bal: ${formatCurrency(client.checkingBalance)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div id="investment-view-screen" className={`screen ${screen === 'investment' ? 'active' : ''}`}>
           <div className="bw-panel">
