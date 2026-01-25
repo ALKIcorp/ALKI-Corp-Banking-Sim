@@ -6,6 +6,7 @@ import {
   DAILY_WITHDRAWAL_LIMIT,
   DAYS_PER_YEAR,
   POLL_INTERVAL_MS,
+  REAL_MS_PER_GAME_DAY,
   STORAGE_KEYS,
 } from './constants.js'
 import { ActivityChart, ClientMoneyChart } from './components/Charts.jsx'
@@ -241,6 +242,14 @@ function App() {
         clearTimeout(saveTimerRef.current)
       }
     }
+  }, [])
+
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setNowMs(Date.now())
+    }, 1000)
+    return () => window.clearInterval(timerId)
   }, [])
 
   const triggerSaveIndicator = useCallback(() => {
@@ -697,6 +706,7 @@ function App() {
 
   const slots = slotsQuery.data || []
   const bankState = bankStateQuery.data
+  const bankStateUpdatedAt = bankStateQuery.dataUpdatedAt
   const clients = clientsQuery.data || []
   const transactions = transactionsQuery.data || []
   const investmentState = investmentQuery.data
@@ -721,6 +731,20 @@ function App() {
   }, [availableProducts])
   const investedSp500Value = Number(bankState?.investedSp500 ?? investmentState?.investedSp500 ?? 0)
   const dashboardTotalAssets = availablePropertyValue + investedSp500Value
+  const gameDayNow = useMemo(() => {
+    if (!bankState || bankStateUpdatedAt === 0 || bankStateUpdatedAt === undefined) {
+      return null
+    }
+    const baseGameDay = Number(bankState.gameDay || 0)
+    const elapsedMs = Math.max(0, nowMs - bankStateUpdatedAt)
+    return baseGameDay + elapsedMs / REAL_MS_PER_GAME_DAY
+  }, [bankState, bankStateUpdatedAt, nowMs])
+  const secondsUntilNextMonth = useMemo(() => {
+    if (gameDayNow === null) return null
+    const fractionalDay = gameDayNow - Math.floor(gameDayNow)
+    const remainingMs = Math.max(0, (1 - fractionalDay) * REAL_MS_PER_GAME_DAY)
+    return Math.ceil(remainingMs / 1000)
+  }, [gameDayNow])
   const clientNameById = useMemo(() => {
     const map = new Map()
     clients.forEach((client) => {
@@ -1121,9 +1145,12 @@ function App() {
             |{' '}
             <span>
               Date: <span id="hud-date">{hudDate}</span>
+              <span className="ml-2 text-xs text-gray-600">
+                Next month in {secondsUntilNextMonth ?? '--'}s
+              </span>
             </span>
             {isAdmin && (
-              <span className="text-green-600 ml-2">Admin status = True</span>
+              <span className="text-green-600 ml-2">Admin: On</span>
             )}
           </div>
           <div className="hud-center-logo" aria-hidden="true">

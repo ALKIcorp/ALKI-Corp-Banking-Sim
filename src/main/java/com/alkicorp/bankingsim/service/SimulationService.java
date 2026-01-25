@@ -161,6 +161,7 @@ public class SimulationService {
                     "Clients list cannot be null");
             boolean clientUpdated = false;
             for (int day = previousWholeDay + 1; day <= currentWholeDay; day++) {
+                processMonthlyLiquidCashGrowth(state);
                 if ((day + 1) % SimulationConstants.DAYS_PER_YEAR == 0) {
                     processSp500Growth(state, day);
                     processSp500Dividend(state, day);
@@ -175,6 +176,16 @@ public class SimulationService {
             }
         }
         return bankStateRepository.save(state);
+    }
+
+    private void processMonthlyLiquidCashGrowth(BankState state) {
+        BigDecimal currentCash = state.getLiquidCash();
+        if (currentCash == null || currentCash.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        BigDecimal growthAmount = currentCash.multiply(SimulationConstants.LIQUID_CASH_MONTHLY_GROWTH)
+            .setScale(2, RoundingMode.HALF_UP);
+        state.setLiquidCash(currentCash.add(growthAmount));
     }
 
     private void processSp500Growth(BankState state, int day) {

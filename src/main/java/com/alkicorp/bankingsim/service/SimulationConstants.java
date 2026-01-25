@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public final class SimulationConstants {
     public static final BigDecimal DAILY_WITHDRAWAL_LIMIT = BigDecimal.valueOf(500);
+    public static final BigDecimal LIQUID_CASH_MONTHLY_GROWTH = BigDecimal.valueOf(0.025);
     public static final BigDecimal SP500_INITIAL_PRICE = BigDecimal.valueOf(4500);
     public static final BigDecimal SP500_ANNUAL_GROWTH = BigDecimal.valueOf(0.10);
     public static final BigDecimal SP500_ANNUAL_DIVIDEND = BigDecimal.valueOf(0.03);
