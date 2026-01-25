@@ -1145,7 +1145,7 @@ function App() {
             |{' '}
             <span>
               Date: <span id="hud-date">{hudDate}</span>
-              <span className="ml-2 text-xs text-gray-600">
+              <span className="ml-2 text-gray-600" style={{ fontSize: '8px' }}>
                 Next month in {secondsUntilNextMonth ?? '--'}s
               </span>
             </span>
