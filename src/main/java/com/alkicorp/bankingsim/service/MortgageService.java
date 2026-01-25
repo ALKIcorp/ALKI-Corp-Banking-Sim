@@ -40,7 +40,7 @@ public class MortgageService {
         User user = currentUserService.getCurrentUser();
         Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
-        Product product = productRepository.findByIdAndSlotIdAndCreatedById(productId, slotId, user.getId())
+        Product product = productRepository.findByIdAndSlotId(productId, slotId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Property not found"));
         if (product.getStatus() != ProductStatus.AVAILABLE) {
             throw new ValidationException("Property is no longer available.");
@@ -74,14 +74,20 @@ public class MortgageService {
     @Transactional(readOnly = true)
     public List<Mortgage> listMortgages(int slotId) {
         User user = currentUserService.getCurrentUser();
+        if (user.isAdminStatus()) {
+            return mortgageRepository.findBySlotId(slotId);
+        }
         return mortgageRepository.findBySlotIdAndUserId(slotId, user.getId());
     }
 
     @Transactional
     public Mortgage updateStatus(int slotId, Long mortgageId, MortgageStatus status) {
         User user = currentUserService.getCurrentUser();
-        Mortgage mortgage = mortgageRepository.findByIdAndSlotIdAndUserId(mortgageId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mortgage not found"));
+        Mortgage mortgage = user.isAdminStatus()
+            ? mortgageRepository.findByIdAndSlotId(mortgageId, slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mortgage not found"))
+            : mortgageRepository.findByIdAndSlotIdAndUserId(mortgageId, slotId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mortgage not found"));
         if (mortgage.getStatus() != MortgageStatus.PENDING) {
             throw new ValidationException("Mortgage already processed.");
         }

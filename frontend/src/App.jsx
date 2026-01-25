@@ -32,6 +32,12 @@ function formatActivityLabel(dayNumber, index, rangeMonths) {
   return `D${index + 1}`
 }
 
+function normalizeMortgageRate(rate) {
+  const value = Number(rate)
+  if (!Number.isFinite(value)) return 0
+  return value > 1 ? value / 100 : value
+}
+
 function App() {
   const initialToken = localStorage.getItem(STORAGE_KEYS.authToken)
   const [token, setToken] = useState(initialToken)
@@ -629,7 +635,8 @@ function App() {
   const ownedProperties = ownedPropertiesQuery.data || []
 
   const selectedClient = clients.find((client) => String(client.id) === String(selectedClientId))
-  const mortgageRate = Number(bankState?.mortgageRate || 0)
+  const mortgageRate = normalizeMortgageRate(bankState?.mortgageRate)
+  const hasMortgageRate = bankState?.mortgageRate !== undefined && bankState?.mortgageRate !== null
 
   const hudDate = bankState ? getGameDateString(bankState.gameDay) : '---'
   const hudMode = useMemo(() => {
@@ -703,7 +710,7 @@ function App() {
 
   useEffect(() => {
     if (screen === 'admin-products' && bankState?.mortgageRate !== undefined) {
-      setMortgageRateInput(String(bankState.mortgageRate))
+      setMortgageRateInput(String(normalizeMortgageRate(bankState.mortgageRate)))
     }
   }, [bankState?.mortgageRate, screen])
 
@@ -978,6 +985,9 @@ function App() {
               <span className="text-green-600 ml-2">Admin status = True</span>
             )}
           </div>
+          <div className="hud-center-logo" aria-hidden="true">
+            <img src="/banksim_logo.png" alt="" className="hud-logo-image" />
+          </div>
           <div>
             <span className={`save-indicator${saveVisible ? ' visible' : ''}`}>Saving...</span>
             <span className={`user-credential text-xs text-gray-600 ml-2${userLabel ? '' : ' hidden'}`}>
@@ -1032,6 +1042,7 @@ function App() {
 
         <div id="login-screen" className={`screen ${screen === 'login' ? 'active' : ''}`}>
           <div className="bw-panel flex-grow flex flex-col justify-center items-center">
+            <img src="/banksim_logo.png" alt="Banking Sim logo" className="auth-logo" />
             <h1 className="bw-header mb-4">
               <span className="header-icon">🔐</span> Banking Sim Login
             </h1>
@@ -1190,6 +1201,7 @@ function App() {
 
         <div id="home-screen" className={`screen ${screen === 'home' ? 'active' : ''}`}>
           <div className="bw-panel flex-grow flex flex-col justify-center items-center">
+            <img src="/banksim_logo.png" alt="Banking Sim logo" className="auth-logo" />
             <h1 className="bw-header mb-4">
               <span className="header-icon">🏦</span> Banking Sim <span className="header-icon">🏦</span>
             </h1>
@@ -1641,6 +1653,7 @@ function App() {
                 <input
                   type="range"
                   id="loan-term"
+                  className="bw-range term-slider"
                   min="5"
                   max="30"
                   value={loanTermYears}
@@ -1648,7 +1661,7 @@ function App() {
                 />
                 <input
                   type="number"
-                  className="bw-input w-20"
+                  className="bw-input term-input"
                   min="5"
                   max="30"
                   value={loanTermYears}
@@ -1745,6 +1758,7 @@ function App() {
                 <input
                   type="range"
                   id="mortgage-term"
+                  className="bw-range term-slider"
                   min="5"
                   max="30"
                   value={mortgageTermYears}
@@ -1752,7 +1766,7 @@ function App() {
                 />
                 <input
                   type="number"
-                  className="bw-input w-20"
+                  className="bw-input term-input"
                   min="5"
                   max="30"
                   value={mortgageTermYears}
@@ -1772,7 +1786,7 @@ function App() {
                 onChange={(event) => setMortgageDownPayment(event.target.value)}
               />
               <p className="text-xs text-gray-600 mt-1">
-                Fixed rate: {(mortgageRate * 100).toFixed(2)}%
+                Fixed rate: {hasMortgageRate ? `${(mortgageRate * 100).toFixed(2)}%` : '---'}
               </p>
               <p className="mortgage-payment-preview">
                 {mortgagePayment
@@ -2052,24 +2066,31 @@ function App() {
             <div className="product-admin-section">
               <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
                 <span className="header-icon">📈</span> Mortgage Rate
+                <span className="text-green-600">
+                  {bankState?.mortgageRate !== undefined ? `(${(mortgageRate * 100).toFixed(2)}%)` : '(---)'}
+                </span>
               </h3>
               <div className="flex gap-2 items-end">
                 <div className="flex-grow">
                   <label htmlFor="mortgage-rate-input" className="bw-label">
-                    Fixed Mortgage Rate (decimal, e.g. 0.045)
+                    Fixed Mortgage Rate
                   </label>
                   <input
                     id="mortgage-rate-input"
-                    className="bw-input"
-                    type="number"
-                    step="0.0001"
-                    min="0"
+                    className="bw-input bw-range"
+                    type="range"
+                    min="0.05"
+                    max="0.15"
+                    step="0.0005"
                     value={mortgageRateInput}
                     onChange={(event) => setMortgageRateInput(event.target.value)}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selected rate: {(Number(mortgageRateInput || 0) * 100).toFixed(2)}%
+                  </p>
                 </div>
                 <button
-                  className="bw-button"
+                  className="bw-button bw-button-compact"
                   type="button"
                   onClick={handleUpdateMortgageRate}
                   disabled={updateMortgageRateMutation.isPending}

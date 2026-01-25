@@ -53,14 +53,20 @@ public class LoanService {
     @Transactional(readOnly = true)
     public List<Loan> listLoans(int slotId) {
         User user = currentUserService.getCurrentUser();
+        if (user.isAdminStatus()) {
+            return loanRepository.findBySlotId(slotId);
+        }
         return loanRepository.findBySlotIdAndUserId(slotId, user.getId());
     }
 
     @Transactional
     public Loan updateStatus(int slotId, Long loanId, LoanStatus status) {
         User user = currentUserService.getCurrentUser();
-        Loan loan = loanRepository.findByIdAndSlotIdAndUserId(loanId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Loan not found"));
+        Loan loan = user.isAdminStatus()
+            ? loanRepository.findByIdAndSlotId(loanId, slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Loan not found"))
+            : loanRepository.findByIdAndSlotIdAndUserId(loanId, slotId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Loan not found"));
         if (loan.getStatus() != LoanStatus.PENDING) {
             throw new ValidationException("Loan already processed.");
         }

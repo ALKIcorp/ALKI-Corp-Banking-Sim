@@ -1,9 +1,13 @@
 package com.alkicorp.bankingsim.web.dto;
 
 import java.math.BigDecimal;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UpdateMortgageRateRequest {
-    BigDecimal mortgageRate;
+    private BigDecimal mortgageRate;
 }

@@ -223,6 +223,12 @@ body {
 .auth-form {
   width: 100%;
 }
+.auth-logo {
+  width: min(220px, 70%);
+  height: auto;
+  margin-bottom: 12px;
+  image-rendering: crisp-edges;
+}
 .hidden { display: none; }
 .password-toggle {
   display: flex;
@@ -259,8 +265,28 @@ body {
   border-radius: 3px 3px 0 0;
   box-shadow: 0 2px 5px rgba(0,0,0,0.4);
 }
+.hud-center-logo {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.hud-logo-image {
+  height: 32px;
+  width: auto;
+  image-rendering: crisp-edges;
+}
 .hud span {
   margin: 0 5px;
+}
+.hud .user-credential {
+  font-size: 9px;
+  font-family: var(--font-primary);
+  line-height: 1.6;
+  color: var(--color-text-light);
 }
 .save-indicator {
   font-size: 8px;
@@ -692,6 +718,31 @@ body {
 .bw-table th {
   color: var(--color-text-medium);
   font-weight: 600;
+}
+
+.bw-button-compact {
+  padding: 4px 10px;
+  line-height: 1.2;
+  height: 28px;
+  align-self: flex-end;
+}
+
+.bw-range {
+  accent-color: var(--color-accent-green);
+  box-shadow: none;
+}
+
+.term-slider {
+  flex: 1 1 auto;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.term-input {
+  flex: 0 0 auto;
+  width: 56px;
+  text-align: center;
+  margin-bottom: 8px;
 }
 
 .table-scroll {
