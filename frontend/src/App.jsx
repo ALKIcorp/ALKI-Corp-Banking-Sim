@@ -258,7 +258,8 @@ function App() {
 
   const shouldPollBank =
     screen === 'bank' || screen === 'client' || screen === 'investment' || screen === 'property-market'
-  const shouldPollClients = screen === 'bank' || screen === 'client' || screen === 'products'
+  const shouldPollClients =
+    screen === 'bank' || screen === 'client' || screen === 'products' || screen === 'investment'
   const shouldPollCharts = screen === 'bank'
 
   const slotsQuery = useQuery({
@@ -709,6 +710,11 @@ function App() {
   const selectedClient = clients.find((client) => String(client.id) === String(selectedClientId))
   const mortgageRate = normalizeMortgageRate(bankState?.mortgageRate)
   const hasMortgageRate = bankState?.mortgageRate !== undefined && bankState?.mortgageRate !== null
+  const totalClientFunds = useMemo(() => {
+    return clients.reduce((sum, client) => sum + Number(client?.checkingBalance || 0), 0)
+  }, [clients])
+  const baseLiquidCash = Number(bankState?.liquidCash ?? investmentState?.liquidCash ?? 0)
+  const combinedLiquidCash = baseLiquidCash + totalClientFunds
   const clientNameById = useMemo(() => {
     const map = new Map()
     clients.forEach((client) => {
@@ -1619,7 +1625,10 @@ function App() {
             <div className="flex justify-between items-center mb-4">
               <div className="text-sm">
                 <p>
-                  Liquid Cash: $<span id="bank-liquid-cash">{formatCurrency(bankState?.liquidCash || 0)}</span>
+                  Liquid Cash: $<span id="bank-liquid-cash">{formatCurrency(combinedLiquidCash)}</span>
+                </p>
+                <p>
+                  Total Funds in Client Accounts: $<span id="bank-client-funds">{formatCurrency(totalClientFunds)}</span>
                 </p>
                 <p>
                   Invested: $<span id="bank-invested-amount">{formatCurrency(bankState?.investedSp500 || 0)}</span>
@@ -2046,7 +2055,7 @@ function App() {
           <div className="bw-panel">
             <h2 className="bw-header">Investment Portfolio</h2>
             <p className="text-sm mb-2 text-center">
-              Bank Liquid Cash: $<span id="invest-view-liquid-cash">{formatCurrency(investmentState?.liquidCash || 0)}</span>
+              Bank Liquid Cash: $<span id="invest-view-liquid-cash">{formatCurrency(combinedLiquidCash)}</span>
             </p>
             <div className="border p-3 rounded bg-gray-100 mb-4">
               <h3 className="font-semibold text-center mb-2">S&P 500 Index Fund</h3>
