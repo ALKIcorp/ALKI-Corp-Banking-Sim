@@ -51,6 +51,13 @@ function calculateMonthlyPayment({ principal, termYears, interestRate }) {
   return (principalValue * monthlyRate * factor) / (factor - 1)
 }
 
+function formatIsoDate(value) {
+  if (!value) return '----'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '----'
+  return date.toISOString().slice(0, 10)
+}
+
 function App() {
   const initialToken = localStorage.getItem(STORAGE_KEYS.authToken)
   const [token, setToken] = useState(initialToken)
@@ -1506,7 +1513,9 @@ function App() {
                   })()
                   return (
                     <div className="log-entry" key={tx.id}>
-                      <span className="text-gray-500">{getGameDateString(tx.gameDay)}:</span>{' '}
+                      <span className="text-gray-500">
+                        {formatIsoDate(tx.createdAt)} • {getGameDateString(tx.gameDay)}:
+                      </span>{' '}
                       <span className={typeClass}>
                         {typeSymbol} {typeLabel}
                       </span>{' '}
@@ -1558,7 +1567,9 @@ function App() {
                   })()
                   return (
                     <div className="log-entry" key={`modal-${tx.id}`}>
-                      <span className="text-gray-500">{getGameDateString(tx.gameDay)}:</span>{' '}
+                      <span className="text-gray-500">
+                        {formatIsoDate(tx.createdAt)} • {getGameDateString(tx.gameDay)}:
+                      </span>{' '}
                       <span className={typeClass}>
                         {typeSymbol} {typeLabel}
                       </span>{' '}
