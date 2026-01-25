@@ -1068,6 +1068,7 @@ function App() {
   }, [mortgageDownPayment, mortgageRate, mortgageTermYears, selectedProperty])
 
   const showHud = !['login', 'home'].includes(screen)
+  const canApplyForMortgage = screen === 'property-market'
 
   return (
     <div className="aspect-ratio-container">
@@ -1854,16 +1855,18 @@ function App() {
                 {selectedProperty.rooms} rooms • {selectedProperty.sqft2} sqft
               </p>
               <p className="text-xs mt-2">{selectedProperty.description}</p>
-              <button
-                className="bw-button w-full mt-3"
-                type="button"
-                onClick={() => {
-                  setShowPropertyModal(false)
-                  setShowMortgageModal(true)
-                }}
-              >
-                Apply for Mortgage
-              </button>
+              {canApplyForMortgage && (
+                <button
+                  className="bw-button w-full mt-3"
+                  type="button"
+                  onClick={() => {
+                    setShowPropertyModal(false)
+                    setShowMortgageModal(true)
+                  }}
+                >
+                  Apply for Mortgage
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -2171,7 +2174,7 @@ function App() {
                                     Approve
                                   </button>
                                   <button
-                                    className="bw-button"
+                                    className="bw-button bw-button-danger"
                                     onClick={() => rejectLoanMutation.mutate({ slotId: currentSlot, loanId: loan.id })}
                                   >
                                     Reject
@@ -2271,7 +2274,7 @@ function App() {
                                     Approve
                                   </button>
                                   <button
-                                    className="bw-button"
+                                    className="bw-button bw-button-danger"
                                     onClick={() =>
                                       rejectMortgageMutation.mutate({
                                         slotId: currentSlot,

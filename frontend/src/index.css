@@ -138,6 +138,14 @@ body {
   transform: translateY(-1px);
   box-shadow: inset 0 -2px 0 rgba(0,0,0,0.4), 0 2px 5px rgba(79, 195, 247, 0.3);
 }
+.bw-button.bw-button-danger:hover {
+  background: linear-gradient(to bottom, #e24b4b, #b73232);
+  border-color: #b73232;
+  border-top-color: #f06262;
+  border-left-color: #f06262;
+  color: #fff;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.4), 0 2px 5px rgba(226, 75, 75, 0.35);
+}
 .bw-button:active {
   background: linear-gradient(to top, #6a6a70, #4a4a50);
   transform: translateY(1px);
