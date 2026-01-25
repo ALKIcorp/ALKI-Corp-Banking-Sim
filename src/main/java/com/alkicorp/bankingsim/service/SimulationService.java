@@ -1,5 +1,6 @@
 package com.alkicorp.bankingsim.service;
 
+import com.alkicorp.bankingsim.auth.model.User;
 import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.InvestmentEvent;
@@ -37,14 +38,14 @@ public class SimulationService {
     private final Clock clock = Clock.systemUTC();
 
     @Transactional
-    public BankState resetSlot(int slotId) {
+    public BankState resetSlot(User user, int slotId) {
         // #region agent log
         System.out.println("  → Resetting slot " + slotId + " (clearing existing data and preparing fresh state)");
         try (FileWriter fw = new FileWriter("/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log", true)) {
             fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:40\",\"message\":\"resetSlot called - WILL DELETE SEED DATA\",\"data\":{\"slotId\":" + slotId + "},\"timestamp\":" + System.currentTimeMillis() + "}\n");
         } catch (IOException e) {}
         // #endregion
-        List<Client> clients = clientRepository.findBySlotId(slotId);
+        List<Client> clients = clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
         // #region agent log
         try (FileWriter fw = new FileWriter("/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log", true)) {
             fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:47\",\"message\":\"Clients found before deletion\",\"data\":{\"slotId\":" + slotId + ",\"clientCount\":" + clients.size() + "},\"timestamp\":" + System.currentTimeMillis() + "}\n");
@@ -53,11 +54,11 @@ public class SimulationService {
         if (!clients.isEmpty()) {
             transactionRepository.deleteByClientIn(clients);
         }
-        clientRepository.deleteBySlotId(slotId);
-        investmentEventRepository.deleteBySlotId(slotId);
+        clientRepository.deleteBySlotIdAndBankStateUserId(slotId, user.getId());
+        investmentEventRepository.deleteBySlotIdAndUserId(slotId, user.getId());
         // #region agent log
         try (FileWriter fw = new FileWriter("/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log", true)) {
-            int afterDeleteCount = clientRepository.findBySlotId(slotId).size();
+            int afterDeleteCount = clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId()).size();
             fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:52\",\"message\":\"Clients after deletion\",\"data\":{\"slotId\":" + slotId + ",\"clientCount\":" + afterDeleteCount + "},\"timestamp\":" + System.currentTimeMillis() + "}\n");
         } catch (IOException e) {}
         // #endregion
@@ -68,7 +69,7 @@ public class SimulationService {
             fw.write("{\"sessionId\":\"debug-session\",\"runId\":\"post-fix\",\"hypothesisId\":\"H1,H4\",\"location\":\"SimulationService.resetSlot:51\",\"message\":\"Before findBySlotId\",\"data\":{\"slotId\":\"" + slotId + "\"},\"timestamp\":" + System.currentTimeMillis() + "}\n");
         } catch (IOException e) {}
         // #endregion
-        Optional<BankState> existingStateOpt = bankStateRepository.findBySlotId(slotId);
+        Optional<BankState> existingStateOpt = bankStateRepository.findBySlotIdAndUserId(slotId, user.getId());
         // #region agent log
         if (existingStateOpt.isPresent()) {
             System.out.println("  ✓ Found existing bank state for slot " + slotId + " (ID: " + existingStateOpt.get().getId() + ") - will update it");
@@ -99,6 +100,7 @@ public class SimulationService {
         } catch (IOException e) {}
         // #endregion
         state.setSlotId(slotId);
+        state.setUser(user);
         state.setLiquidCash(STARTING_CASH);
         state.setInvestedSp500(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         state.setSp500Price(SimulationConstants.SP500_INITIAL_PRICE);
@@ -123,16 +125,16 @@ public class SimulationService {
     }
 
     @Transactional
-    public Optional<BankState> getAndAdvanceState(int slotId) {
-        return bankStateRepository.findBySlotId(slotId)
+    public Optional<BankState> getAndAdvanceState(User user, int slotId) {
+        return bankStateRepository.findBySlotIdAndUserId(slotId, user.getId())
             .map(this::advanceTime);
     }
 
     @Transactional
-    public List<BankState> listAndAdvanceSlots(List<Integer> slotIds) {
+    public List<BankState> listAndAdvanceSlots(User user, List<Integer> slotIds) {
         List<BankState> results = new ArrayList<>();
         for (Integer slotId : slotIds) {
-            getAndAdvanceState(slotId).ifPresent(results::add);
+            getAndAdvanceState(user, slotId).ifPresent(results::add);
         }
         return results;
     }
@@ -153,7 +155,7 @@ public class SimulationService {
 
         if (currentWholeDay > previousWholeDay) {
             List<Client> clients = Objects.requireNonNull(
-                    Optional.ofNullable(clientRepository.findBySlotId(state.getSlotId()))
+                    Optional.ofNullable(clientRepository.findBySlotIdAndBankStateUserId(state.getSlotId(), state.getUser().getId()))
                             .orElse(Collections.emptyList()),
                     "Clients list cannot be null");
             boolean clientUpdated = false;
@@ -180,7 +182,7 @@ public class SimulationService {
             BigDecimal growthAmount = invested.multiply(SimulationConstants.SP500_ANNUAL_GROWTH)
                 .setScale(2, RoundingMode.HALF_UP);
             state.setInvestedSp500(invested.add(growthAmount));
-            recordInvestmentEvent(state.getSlotId(), InvestmentEventType.GROWTH, growthAmount, day);
+            recordInvestmentEvent(state.getSlotId(), state.getUser(), InvestmentEventType.GROWTH, growthAmount, day);
         }
         state.setNextGrowthDay(day + SimulationConstants.DAYS_PER_YEAR);
     }
@@ -191,14 +193,15 @@ public class SimulationService {
             BigDecimal dividendAmount = invested.multiply(SimulationConstants.SP500_ANNUAL_DIVIDEND)
                 .setScale(2, RoundingMode.HALF_UP);
             state.setLiquidCash(state.getLiquidCash().add(dividendAmount));
-            recordInvestmentEvent(state.getSlotId(), InvestmentEventType.DIVIDEND, dividendAmount, day);
+            recordInvestmentEvent(state.getSlotId(), state.getUser(), InvestmentEventType.DIVIDEND, dividendAmount, day);
         }
         state.setNextDividendDay(day + SimulationConstants.DAYS_PER_YEAR);
     }
 
-    private void recordInvestmentEvent(int slotId, InvestmentEventType type, BigDecimal amount, int gameDay) {
+    private void recordInvestmentEvent(int slotId, User user, InvestmentEventType type, BigDecimal amount, int gameDay) {
         InvestmentEvent event = new InvestmentEvent();
         event.setSlotId(slotId);
+        event.setUser(user);
         event.setType(type);
         event.setAsset("S&P 500");
         event.setAmount(amount);

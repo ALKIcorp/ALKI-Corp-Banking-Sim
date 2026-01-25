@@ -506,3 +506,78 @@ databaseChangeLog:
             constraintName: fk_user_roles_role
             referencedTableName: roles
             referencedColumnNames: id
+  - changeSet:
+      id: 13-add-user-ownership-to-bank-state
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: bank_state
+          - tableExists:
+              tableName: users
+      changes:
+        - addColumn:
+            tableName: bank_state
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+        - addForeignKeyConstraint:
+            baseTableName: bank_state
+            baseColumnNames: user_id
+            constraintName: fk_bank_state_user
+            referencedTableName: users
+            referencedColumnNames: id
+        - dropUniqueConstraint:
+            tableName: bank_state
+            constraintName: bank_state_slot_id_key
+        - addUniqueConstraint:
+            tableName: bank_state
+            columnNames: user_id, slot_id
+            constraintName: uk_bank_state_user_slot
+        - createIndex:
+            tableName: bank_state
+            indexName: idx_bank_state_user_slot
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: slot_id
+  - changeSet:
+      id: 14-add-user-ownership-to-investment-event
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: investment_event
+          - tableExists:
+              tableName: users
+      changes:
+        - addColumn:
+            tableName: investment_event
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+        - addForeignKeyConstraint:
+            baseTableName: investment_event
+            baseColumnNames: user_id
+            constraintName: fk_investment_event_user
+            referencedTableName: users
+            referencedColumnNames: id
+        - createIndex:
+            tableName: investment_event
+            indexName: idx_investment_user_slot
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: slot_id

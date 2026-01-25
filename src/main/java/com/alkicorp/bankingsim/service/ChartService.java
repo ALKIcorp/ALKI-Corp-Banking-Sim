@@ -1,5 +1,7 @@
 package com.alkicorp.bankingsim.service;
 
+import com.alkicorp.bankingsim.auth.model.User;
+import com.alkicorp.bankingsim.auth.service.CurrentUserService;
 import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.Transaction;
@@ -27,11 +29,13 @@ public class ChartService {
     private final SimulationService simulationService;
     private final ClientRepository clientRepository;
     private final TransactionRepository transactionRepository;
+    private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
     public ClientDistributionResponse getClientDistribution(int slotId) {
         // No bank state required for client distribution - can work with empty state
-        List<Client> clients = clientRepository.findBySlotId(slotId);
+        User user = currentUserService.getCurrentUser();
+        List<Client> clients = clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
         List<ClientDistributionResponse.Item> items = clients.stream()
             .sorted(Comparator.comparing(Client::getName))
             .map(c -> ClientDistributionResponse.Item.builder()
@@ -44,10 +48,11 @@ public class ChartService {
 
     @Transactional(readOnly = true)
     public ActivityChartResponse getActivityChart(int slotId) {
-        Optional<BankState> stateOpt = simulationService.getAndAdvanceState(slotId);
+        User user = currentUserService.getCurrentUser();
+        Optional<BankState> stateOpt = simulationService.getAndAdvanceState(user, slotId);
         int currentDay = stateOpt.map(s -> (int) Math.floor(s.getGameDay())).orElse(0);
 
-        List<Client> clients = clientRepository.findBySlotId(slotId);
+        List<Client> clients = clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
         List<Transaction> transactions = clients.isEmpty()
             ? List.of()
             : transactionRepository.findByClientIn(clients);

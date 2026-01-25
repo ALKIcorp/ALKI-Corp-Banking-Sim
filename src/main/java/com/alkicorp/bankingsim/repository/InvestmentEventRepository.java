@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface InvestmentEventRepository extends JpaRepository<InvestmentEvent, Long> {
-    List<InvestmentEvent> findBySlotId(Integer slotId);
-    void deleteBySlotId(Integer slotId);
+    List<InvestmentEvent> findBySlotIdAndUserId(Integer slotId, Long userId);
+    void deleteBySlotIdAndUserId(Integer slotId, Long userId);
 }

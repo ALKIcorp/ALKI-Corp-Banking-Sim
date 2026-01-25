@@ -384,6 +384,7 @@ function App() {
     if (screen === 'add-client') return 'Bank > Add Client'
     if (screen === 'client') return `Client > ${selectedClient?.name || ''}`
     if (screen === 'investment') return 'Bank > Investments'
+    if (screen === 'products') return 'Bank > Products'
     return '---'
   }, [screen, selectedClient])
 
@@ -948,9 +949,12 @@ function App() {
             <h3 className="text-sm font-semibold mb-2 border-t pt-2 uppercase flex items-center gap-2">
               <span className="header-icon">💰</span> Investments
             </h3>
-            <div className="text-center">
+            <div className="flex justify-center gap-2">
               <button className="bw-button" onClick={() => setScreen('investment')}>
                 <span className="btn-icon">⚙️</span> Manage Investments
+              </button>
+              <button className="bw-button" onClick={() => setScreen('products')}>
+                <span className="btn-icon">🧰</span> Manage Products
               </button>
             </div>
           </div>
@@ -1028,6 +1032,18 @@ function App() {
               </p>
             </div>
 
+            <button className="bw-button mt-2 self-center" onClick={() => setScreen('bank')}>
+              <span className="btn-icon">🏦</span> Back to Bank View
+            </button>
+          </div>
+        </div>
+
+        <div id="products-view-screen" className={`screen ${screen === 'products' ? 'active' : ''}`}>
+          <div className="bw-panel">
+            <h2 className="bw-header">
+              <span className="header-icon">🧰</span> Product Management
+            </h2>
+            <p className="text-sm mb-2 text-center">Products dashboard coming soon.</p>
             <button className="bw-button mt-2 self-center" onClick={() => setScreen('bank')}>
               <span className="btn-icon">🏦</span> Back to Bank View
             </button>

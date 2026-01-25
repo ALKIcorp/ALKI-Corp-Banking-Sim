@@ -1,5 +1,7 @@
 package com.alkicorp.bankingsim.service;
 
+import com.alkicorp.bankingsim.auth.model.User;
+import com.alkicorp.bankingsim.auth.service.CurrentUserService;
 import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.web.dto.BankStateResponse;
@@ -20,10 +22,12 @@ public class BankService {
 
     private final SimulationService simulationService;
     private final ClientRepository clientRepository;
+    private final CurrentUserService currentUserService;
 
     @Transactional
     public List<SlotSummaryResponse> getSlotSummaries(List<Integer> slots) {
-        List<BankState> states = simulationService.listAndAdvanceSlots(slots);
+        User user = currentUserService.getCurrentUser();
+        List<BankState> states = simulationService.listAndAdvanceSlots(user, slots);
         return slots.stream()
                 .map(slotId -> {
                     Optional<BankState> stateOpt = states.stream()
@@ -31,7 +35,7 @@ public class BankService {
                             .findFirst();
                     if (stateOpt.isPresent()) {
                         BankState state = stateOpt.get();
-                        int clientCount = clientRepository.findBySlotId(state.getSlotId()).size();
+                        int clientCount = clientRepository.findBySlotIdAndBankStateUserId(state.getSlotId(), user.getId()).size();
                         boolean hasData = state.getGameDay() > 0 || clientCount > 0;
                         return SlotSummaryResponse.builder()
                                 .slotId(state.getSlotId())
@@ -42,7 +46,7 @@ public class BankService {
                                 .build();
                     } else {
                         // Slot has no bank state - return empty summary
-                        int clientCount = clientRepository.findBySlotId(slotId).size();
+                        int clientCount = clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId()).size();
                         return SlotSummaryResponse.builder()
                                 .slotId(slotId)
                                 .clientCount(clientCount)
@@ -57,13 +61,15 @@ public class BankService {
 
     @Transactional
     public BankStateResponse resetAndGetState(int slotId) {
-        BankState state = simulationService.resetSlot(slotId);
+        User user = currentUserService.getCurrentUser();
+        BankState state = simulationService.resetSlot(user, slotId);
         return toResponse(state);
     }
 
     @Transactional
     public BankStateResponse getBankState(int slotId) {
-        BankState state = simulationService.getAndAdvanceState(slotId)
+        User user = currentUserService.getCurrentUser();
+        BankState state = simulationService.getAndAdvanceState(user, slotId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
                                 + "/start to initialize the slot."));

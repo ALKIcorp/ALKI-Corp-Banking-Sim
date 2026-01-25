@@ -5,5 +5,5 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BankStateRepository extends JpaRepository<BankState, Long> {
-    Optional<BankState> findBySlotId(Integer slotId);
+    Optional<BankState> findBySlotIdAndUserId(Integer slotId, Long userId);
 }

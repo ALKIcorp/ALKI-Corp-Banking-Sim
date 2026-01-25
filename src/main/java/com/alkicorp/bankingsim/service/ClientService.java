@@ -1,5 +1,7 @@
 package com.alkicorp.bankingsim.service;
 
+import com.alkicorp.bankingsim.auth.model.User;
+import com.alkicorp.bankingsim.auth.service.CurrentUserService;
 import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.Transaction;
@@ -26,6 +28,7 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final TransactionRepository transactionRepository;
     private final SimulationService simulationService;
+    private final CurrentUserService currentUserService;
     private final Clock clock = Clock.systemUTC();
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -37,7 +40,8 @@ public class ClientService {
         if (name.length() > 80) {
             throw new ValidationException("Client name is too long (max 80 characters).");
         }
-        BankState state = simulationService.getAndAdvanceState(slotId)
+        User user = currentUserService.getCurrentUser();
+        BankState state = simulationService.getAndAdvanceState(user, slotId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
                 "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         Client client = new Client();
@@ -56,19 +60,22 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public List<Client> getClients(int slotId) {
-        return clientRepository.findBySlotId(slotId);
+        User user = currentUserService.getCurrentUser();
+        return clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
     }
 
     @Transactional(readOnly = true)
     public Client getClient(int slotId, Long clientId) {
-        return clientRepository.findByIdAndSlotId(clientId, slotId)
+        User user = currentUserService.getCurrentUser();
+        return clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
     }
 
     @Transactional
     public Transaction deposit(int slotId, Long clientId, BigDecimal amount) {
         validateAmount(amount, true);
-        BankState state = simulationService.getAndAdvanceState(slotId)
+        User user = currentUserService.getCurrentUser();
+        BankState state = simulationService.getAndAdvanceState(user, slotId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
                 "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
@@ -80,7 +87,8 @@ public class ClientService {
     @Transactional
     public Transaction withdraw(int slotId, Long clientId, BigDecimal amount) {
         validateAmount(amount, false);
-        BankState state = simulationService.getAndAdvanceState(slotId)
+        User user = currentUserService.getCurrentUser();
+        BankState state = simulationService.getAndAdvanceState(user, slotId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
                 "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);

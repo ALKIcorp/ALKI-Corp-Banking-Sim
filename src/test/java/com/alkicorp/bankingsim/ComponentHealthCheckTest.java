@@ -1,11 +1,15 @@
 package com.alkicorp.bankingsim;
 
+import com.alkicorp.bankingsim.auth.model.User;
+import com.alkicorp.bankingsim.auth.repository.UserRepository;
 import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.service.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.sql.DataSource;
@@ -43,8 +47,15 @@ public class ComponentHealthCheckTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private static final TestReporter reporter = new TestReporter();
     private static final int TEST_SLOT_ID = 999; // Use a test slot that won't interfere
+    private static final String TEST_USERNAME = "test-user";
+    private static final String TEST_EMAIL = "test-user@example.com";
+
+    private User testUser;
 
     @BeforeAll
     static void setup() {
@@ -52,6 +63,28 @@ public class ComponentHealthCheckTest {
         reporter.printSeparator();
     }
 
+    @BeforeEach
+    void setAuthContext() {
+        testUser = userRepository.findByUsernameIgnoreCase(TEST_USERNAME)
+            .orElseGet(() -> {
+                User user = new User();
+                user.setUsername(TEST_USERNAME);
+                user.setEmail(TEST_EMAIL);
+                user.setPasswordHash("test-password-hash");
+                return userRepository.save(user);
+            });
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+            testUser.getUsername(),
+            null,
+            List.of()
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearAuthContext() {
+        SecurityContextHolder.clearContext();
+    }
     @AfterAll
     static void teardown() {
         reporter.printSeparator();
@@ -140,7 +173,7 @@ public class ComponentHealthCheckTest {
 
             // Test database operations by resetting a slot
             System.out.println("  → Testing database operations (resetting test slot)...");
-            simulationService.resetSlot(TEST_SLOT_ID);
+            simulationService.resetSlot(testUser, TEST_SLOT_ID);
             System.out.println("  ✓ Database operations working correctly");
             reporter.pass("Database operations successful");
 
@@ -169,19 +202,19 @@ public class ComponentHealthCheckTest {
         reporter.startTest("SimulationService");
         try {
             // Test resetSlot
-            var state = simulationService.resetSlot(TEST_SLOT_ID);
+            var state = simulationService.resetSlot(testUser, TEST_SLOT_ID);
             Assertions.assertNotNull(state);
             Assertions.assertEquals(TEST_SLOT_ID, state.getSlotId());
             reporter.pass("resetSlot() - creates/resets bank state correctly");
 
             // Test getAndAdvanceState
-            var advancedState = simulationService.getAndAdvanceState(TEST_SLOT_ID);
+            var advancedState = simulationService.getAndAdvanceState(testUser, TEST_SLOT_ID);
             Assertions.assertTrue(advancedState.isPresent());
             Assertions.assertNotNull(advancedState.get().getGameDay());
             reporter.pass("getAndAdvanceState() - advances time correctly");
 
             // Test listAndAdvanceSlots
-            var states = simulationService.listAndAdvanceSlots(List.of(TEST_SLOT_ID));
+            var states = simulationService.listAndAdvanceSlots(testUser, List.of(TEST_SLOT_ID));
             Assertions.assertFalse(states.isEmpty());
             reporter.pass("listAndAdvanceSlots() - processes multiple slots");
         } catch (Exception e) {
@@ -202,7 +235,7 @@ public class ComponentHealthCheckTest {
         // #endregion
         reporter.startTest("BankService");
         try {
-            simulationService.resetSlot(TEST_SLOT_ID);
+            simulationService.resetSlot(testUser, TEST_SLOT_ID);
 
             // Test getBankState
             var bankState = bankService.getBankState(TEST_SLOT_ID);
@@ -233,7 +266,7 @@ public class ComponentHealthCheckTest {
     void testClientService() {
         reporter.startTest("ClientService");
         try {
-            simulationService.resetSlot(TEST_SLOT_ID);
+            simulationService.resetSlot(testUser, TEST_SLOT_ID);
 
             // Test createClient
             var client = clientService.createClient(TEST_SLOT_ID, "Test Client");
@@ -301,7 +334,7 @@ public class ComponentHealthCheckTest {
     void testInvestmentService() {
         reporter.startTest("InvestmentService");
         try {
-            simulationService.resetSlot(TEST_SLOT_ID);
+            simulationService.resetSlot(testUser, TEST_SLOT_ID);
 
             // Test getInvestmentState
             var state = investmentService.getInvestmentState(TEST_SLOT_ID);
@@ -346,7 +379,7 @@ public class ComponentHealthCheckTest {
     void testChartService() {
         reporter.startTest("ChartService");
         try {
-            simulationService.resetSlot(TEST_SLOT_ID);
+            simulationService.resetSlot(testUser, TEST_SLOT_ID);
 
             // Create some test data
             var client1 = clientService.createClient(TEST_SLOT_ID, "Alice");
@@ -381,7 +414,7 @@ public class ComponentHealthCheckTest {
     void testIntegration() {
         reporter.startTest("Integration Test");
         try {
-            simulationService.resetSlot(TEST_SLOT_ID);
+            simulationService.resetSlot(testUser, TEST_SLOT_ID);
 
             // Full workflow: create client, deposit, invest, withdraw
             var client = clientService.createClient(TEST_SLOT_ID, "Integration Test Client");
