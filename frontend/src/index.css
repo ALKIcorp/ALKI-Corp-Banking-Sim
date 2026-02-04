@@ -521,6 +521,15 @@ body {
   margin-bottom: 4px;
   padding-bottom: 3px;
 }
+#bank-view-screen {
+  flex: 1;
+  min-height: 100vh;
+}
+#bank-view-screen .bw-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
 #bank-view-screen .bank-hero {
   display: flex;
   justify-content: space-between;
@@ -559,6 +568,15 @@ body {
   color: var(--color-text-light);
   margin-top: 0;
   align-items: baseline;
+}
+#bank-view-screen .bank-date-value {
+  display: inline-block;
+  font-size: 12px;
+  line-height: 16px;
+  -webkit-font-smoothing: none; /* keep pixel font crisp, avoids flicker lines */
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeSpeed;
+  transform: translateZ(0);
 }
 
 #bank-view-screen .bw-panel > .grid {
@@ -605,6 +623,7 @@ body {
   position: sticky;
   bottom: 0;
   flex-shrink: 0;
+  margin-top: auto;
   display: flex;
   justify-content: center;
   gap: 12px;
