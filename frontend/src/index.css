@@ -502,6 +502,7 @@ body {
 
 #bank-view-screen .bw-panel {
   padding: 6px;
+  padding-bottom: 130px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -620,25 +621,26 @@ body {
   padding: 4px 8px;
 }
 #bank-view-screen .bank-action-bar {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   flex-shrink: 0;
-  margin-top: auto;
   display: flex;
   justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 12px 8px 10px;
-  margin-top: 6px;
+  padding: 14px 12px 12px;
+  margin-top: auto;
   background: linear-gradient(180deg, rgba(16, 16, 24, 0) 0%, rgba(16, 16, 24, 0.82) 45%, rgba(16, 16, 24, 0.94) 100%);
   border-top: 2px solid var(--color-panel-border);
-  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.35);
-  z-index: 5;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.45);
+  z-index: 50;
 }
 #bank-view-screen .bank-action-bar .bw-button.bank-action {
   font-size: 13px;
-  padding: 12px 20px;
-  min-width: 190px;
+  padding: 14px 24px;
+  min-width: 200px;
   margin: 0;
 }
 #bank-view-screen .bank-action-bar .bw-button.bank-action .btn-icon {
