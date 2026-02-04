@@ -119,23 +119,38 @@ export default function BankDashboard() {
     <div id="bank-view-screen" className="screen active">
       <Panel>
         <h2 className="bw-header">ALKI corp.</h2>
-        <div className="flex justify-between items-center mb-4">
-          <div className="text-sm">
-            <p>
-              Liquid Cash: $<span id="bank-liquid-cash">{formatCurrency(combinedLiquidCash)}</span>
-            </p>
-            <p>
-              Total Funds in Client Accounts: $<span id="bank-client-funds">{formatCurrency(totalClientFunds)}</span>
-            </p>
-            <p>
-              Invested: $<span id="bank-invested-amount">{formatCurrency(bankState?.investedSp500 || 0)}</span>
-            </p>
-            <p className="font-semibold">
-              Total Assets: $<span id="bank-total-assets">{formatCurrency(dashboardTotalAssets)}</span>
-            </p>
-            <p className="text-xs text-gray-600">
-              Date: {bankState ? getGameDateString(bankState.gameDay) : '---'} • Next month in {secondsUntilNextMonth ?? '--'}s
-            </p>
+        <div className="flex justify-between items-start mb-4 bank-hero">
+          <div className="bank-stats">
+            <div className="bank-stat">
+              <span className="bank-stat-label">Liquid Cash:</span>
+              <span className="bank-stat-value" id="bank-liquid-cash">
+                ${formatCurrency(combinedLiquidCash)}
+              </span>
+            </div>
+            <div className="bank-stat">
+              <span className="bank-stat-label">Total Funds in Client Accounts:</span>
+              <span className="bank-stat-value" id="bank-client-funds">
+                ${formatCurrency(totalClientFunds)}
+              </span>
+            </div>
+            <div className="bank-stat">
+              <span className="bank-stat-label">Invested:</span>
+              <span className="bank-stat-value" id="bank-invested-amount">
+                ${formatCurrency(bankState?.investedSp500 || 0)}
+              </span>
+            </div>
+            <div className="bank-stat bank-stat-total">
+              <span className="bank-stat-label">Total Assets:</span>
+              <span className="bank-stat-value" id="bank-total-assets">
+                ${formatCurrency(dashboardTotalAssets)}
+              </span>
+            </div>
+            <div className="bank-stat bank-date-row">
+              <span className="bank-stat-label">Date:</span>
+              <span className="bank-date-value">
+                {bankState ? getGameDateString(bankState.gameDay) : '---'} • Next month in {secondsUntilNextMonth ?? '--'}s
+              </span>
+            </div>
           </div>
           <div className="flex gap-2">
             <Link className="bw-button" to="/clients/new">

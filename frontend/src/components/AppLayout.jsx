@@ -12,9 +12,6 @@ export default function AppLayout() {
     <div className="app-shell">
       <header className="hud simple-hud">
         <div className="hud-left">
-          <span className="hud-brand" role="img" aria-label="bank">
-            🏦
-          </span>
           <nav className="hud-nav">
             <Link className={location.pathname === '/home' ? 'active' : ''} to="/home">
               Home
@@ -38,14 +35,19 @@ export default function AppLayout() {
             )}
           </nav>
         </div>
+        <div className="hud-center-logo">
+          <Link className="hud-brand" to="/home" aria-label="home">
+            <img src="/banksim_logo.png" alt="BankSim logo" className="hud-logo-image" />
+          </Link>
+        </div>
         <div className="hud-right">
-          <span className="text-xs text-gray-600">{userLabel ? `User: ${userLabel}` : ''}</span>
-          <span className="text-xs text-gray-600 ml-2">{currentSlot ? `Slot ${currentSlot}` : 'No slot'}</span>
+          <span className="hud-user">{userLabel ? `User: ${userLabel}` : 'User: —'}</span>
+          <span className="hud-slot">{currentSlot ? `Slot ${currentSlot}` : ''}</span>
           <button
-            className="bw-button ml-3"
+            className="bw-button hud-button"
             type="button"
             onClick={() => {
-            logout()
+              logout()
               setCurrentSlot(null)
               setSelectedClientId(null)
               navigate('/login')

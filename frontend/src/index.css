@@ -267,10 +267,12 @@ body {
   border-bottom: 3px solid var(--color-border-dark);
   font-size: 9px;
   position: sticky;
-  top: -10px;
-  margin: -10px -10px 10px -10px;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0 0 10px 0;
   z-index: 10;
-  border-radius: 3px 3px 0 0;
+  border-radius: 0 0 3px 3px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.4);
 }
 .hud-center-logo {
@@ -280,12 +282,69 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  pointer-events: auto;
 }
 .hud-logo-image {
-  height: 32px;
+  height: 24px;
   width: auto;
   image-rendering: crisp-edges;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
+}
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 0;
+}
+.hud-brand {
+  display: inline-flex;
+  align-items: center;
+}
+.hud-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+}
+.hud-nav a {
+  color: #d7d7d9;
+  text-decoration: none;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+.hud-nav a::after {
+  content: '|';
+  margin-left: 8px;
+  color: #7b7b7f;
+}
+.hud-nav a:last-child::after {
+  content: '';
+  margin: 0;
+}
+.hud-nav a.active {
+  color: #7cf0b4;
+}
+.hud-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  flex: 1 1 0;
+  justify-content: flex-end;
+}
+.hud-user {
+  color: #d7d7d9;
+}
+.hud-slot {
+  color: #a8a8ac;
+}
+.hud-right .hud-button {
+  padding: 4px 8px;
+  font-size: 9px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .hud span {
   margin: 0 5px;
@@ -450,6 +509,41 @@ body {
 #bank-view-screen .bw-header {
   margin-bottom: 4px;
   padding-bottom: 3px;
+}
+#bank-view-screen .bank-hero {
+  align-items: flex-start;
+}
+#bank-view-screen .bank-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  letter-spacing: 0.3px;
+}
+#bank-view-screen .bank-stat {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  color: var(--color-text-light);
+}
+#bank-view-screen .bank-stat-label {
+  display: inline-block;
+  width: 260px;
+  font-weight: 700;
+}
+#bank-view-screen .bank-stat-value {
+  font-weight: 700;
+}
+#bank-view-screen .bank-stat-total .bank-stat-value {
+  color: #7cf0b4;
+}
+#bank-view-screen .bank-date-row {
+  display: flex;
+  font-size: 14px;
+  color: var(--color-text-light);
+  margin-top: 0;
+  align-items: baseline;
 }
 
 #bank-view-screen .bw-panel > .grid {
