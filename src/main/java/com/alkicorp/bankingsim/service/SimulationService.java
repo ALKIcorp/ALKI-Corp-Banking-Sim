@@ -329,11 +329,26 @@ public class SimulationService {
 
     private void processMortgageRepayments(BankState state, int day) {
         List<Mortgage> mortgages = mortgageRepository.findBySlotIdAndUserId(state.getSlotId(), state.getUser().getId());
+        mortgages.sort(java.util.Comparator
+                .comparing(Mortgage::getUpdatedAt, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .reversed());
+        java.util.Set<Long> paidProductIds = new java.util.HashSet<>();
         for (Mortgage mortgage : mortgages) {
             if (mortgage.getNextPaymentDay() == null || mortgage.getMonthlyPayment() == null) {
                 continue;
             }
             if (mortgage.getStatus() != com.alkicorp.bankingsim.model.enums.MortgageStatus.ACCEPTED) {
+                continue;
+            }
+            if (mortgage.getProduct() == null
+                    || mortgage.getProduct().getStatus() != com.alkicorp.bankingsim.model.enums.ProductStatus.OWNED
+                    || mortgage.getProduct().getOwnerClient() == null
+                    || mortgage.getProduct().getOwnerClient().getId() == null
+                    || !mortgage.getProduct().getOwnerClient().getId().equals(mortgage.getClient().getId())) {
+                continue;
+            }
+            Long productId = mortgage.getProduct().getId();
+            if (productId != null && paidProductIds.contains(productId)) {
                 continue;
             }
             if (day < mortgage.getNextPaymentDay()) {
@@ -365,6 +380,9 @@ public class SimulationService {
             mortgage.setUpdatedAt(now);
             mortgageRepository.save(mortgage);
             clientRepository.save(client);
+            if (productId != null) {
+                paidProductIds.add(productId);
+            }
         }
     }
 

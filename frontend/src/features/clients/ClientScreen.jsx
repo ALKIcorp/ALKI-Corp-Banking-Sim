@@ -51,6 +51,8 @@ export default function ClientScreen() {
     if (type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
     if (type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
     if (type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
+    if (type === 'MORTGAGE_PAYMENT') return 'Mortgage Payment'
+    if (type === 'RENT_PAYMENT') return 'Rental Payment'
     if (type === 'PROPERTY_SALE') return 'Property Sale'
     if (type === 'PAYROLL_DEPOSIT') return 'Payroll Deposit'
     if (type === 'SAVINGS_DEPOSIT') return 'Savings Deposit'

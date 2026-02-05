@@ -43,7 +43,12 @@ public class MandatorySpendService {
 
         // Accepted mortgages
         for (Mortgage mortgage : mortgageRepository.findByClientId(client.getId())) {
-            if (mortgage.getStatus() == MortgageStatus.ACCEPTED && mortgage.getMonthlyPayment() != null) {
+            if (mortgage.getStatus() == MortgageStatus.ACCEPTED
+                    && mortgage.getMonthlyPayment() != null
+                    && mortgage.getProduct() != null
+                    && mortgage.getProduct().getStatus() == com.alkicorp.bankingsim.model.enums.ProductStatus.OWNED
+                    && mortgage.getProduct().getOwnerClient() != null
+                    && client.getId().equals(mortgage.getProduct().getOwnerClient().getId())) {
                 total = total.add(mortgage.getMonthlyPayment());
             }
         }
