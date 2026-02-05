@@ -586,7 +586,7 @@ export default function ClientScreen() {
                   <div className="property-meta">
                     {property.rooms} rooms • {property.sqft2} sqft
                   </div>
-                  <div className="property-price">${formatCurrency(property.price)}</div>
+                <div className="property-price">${formatCurrency(property.price)}</div>
                   <button className="bw-button w-full mt-2" type="button" onClick={() => setSelectedProperty(property)}>
                     View Details
                   </button>
@@ -599,7 +599,19 @@ export default function ClientScreen() {
                         productId: property.id,
                       })
                     }
-                    disabled={sellPropertyMutation.isPending}
+                    disabled={(() => {
+                      if (sellPropertyMutation.isPending) return true
+                      const mortgage = mortgageByPropertyId.get(String(property.id))
+                      if (!mortgage) return false
+                      const totalMonths = Math.max(0, Number(mortgage.termYears || 0) * 12)
+                      const paymentsMade = Math.max(0, Number(mortgage.paymentsMade || 0))
+                      const propertyPrice = Number(mortgage.propertyPrice ?? property.price ?? 0)
+                      const totalPaid = Number(mortgage.totalPaid || 0)
+                      const mortgageComplete =
+                        (totalMonths > 0 && paymentsMade >= totalMonths) ||
+                        (propertyPrice > 0 && totalPaid >= propertyPrice)
+                      return !mortgageComplete
+                    })()}
                   >
                     Sell for ${formatCurrency(property.price)}
                   </button>
@@ -755,7 +767,7 @@ export default function ClientScreen() {
           }
           onClose={() => setSelectedProperty(null)}
         >
-          <PropertyImage src={selectedProperty.imageUrl} alt={`${selectedProperty.name} photo`} />
+          <PropertyImage src={selectedProperty.imageUrl} alt={`${selectedProperty.name} photo`} variant="modal" />
           <div className="property-body">
             <div className="property-title mt-2">{selectedProperty.name}</div>
             <div className="property-meta">
@@ -773,11 +785,20 @@ export default function ClientScreen() {
             const remainingMonths = Math.max(0, totalMonths - paymentsMade)
             const remainingYears = Math.floor(remainingMonths / 12)
             const remainingMonthRemainder = remainingMonths % 12
+            const propertyPrice = Number(mortgage.propertyPrice ?? selectedProperty.price ?? 0)
+            const totalPaid = Number(mortgage.totalPaid || 0)
+            const equityPct = propertyPrice > 0 ? Math.min(100, (totalPaid / propertyPrice) * 100) : 0
             return (
               <div className="mt-3 text-xs text-gray-700">
                 <div className="flex items-center justify-between">
                   <span className="uppercase text-gray-500">Paid So Far</span>
                   <span className="font-semibold">${formatCurrency(mortgage.totalPaid || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="uppercase text-gray-500">Equity</span>
+                  <span className="font-semibold">
+                    ${formatCurrency(totalPaid)} ({equityPct.toFixed(1)}%)
+                  </span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
                   <span className="uppercase text-gray-500">Monthly Payment</span>
@@ -797,12 +818,6 @@ export default function ClientScreen() {
                   <div className="flex items-center justify-between mt-1">
                     <span className="uppercase text-gray-500">Next Payment</span>
                     <span className="font-semibold">{getGameDateString(mortgage.nextPaymentDay)}</span>
-                  </div>
-                )}
-                {mortgage.lastPaymentStatus && (
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="uppercase text-gray-500">Last Status</span>
-                    <span className="font-semibold">{mortgage.lastPaymentStatus}</span>
                   </div>
                 )}
               </div>
