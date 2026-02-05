@@ -10,8 +10,16 @@ public class ClientResponse {
     Long id;
     String name;
     BigDecimal checkingBalance;
+    BigDecimal savingsBalance;
     BigDecimal dailyWithdrawn;
+    BigDecimal monthlyIncome;
+    BigDecimal monthlyMandatory;
+    BigDecimal monthlyDiscretionary;
     String cardNumber;
     String cardExpiry;
     String cardCvv;
+    String employmentStatus;
+    Boolean bankrupt;
+    Double bankruptUntil;
+    String purchasingBlockReason;
 }

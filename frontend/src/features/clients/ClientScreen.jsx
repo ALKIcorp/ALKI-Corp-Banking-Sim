@@ -7,6 +7,9 @@ import { useSlot } from '../../providers/SlotProvider.jsx'
 import { useClients } from '../../hooks/useClients.js'
 import { useTransactions } from '../../hooks/useTransactions.js'
 import { useClientProperties } from '../../hooks/useMortgages.js'
+import { useJobs } from '../../hooks/useJobs.js'
+import { useRentals } from '../../hooks/useRentals.js'
+import { useLiving } from '../../hooks/useLiving.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE, DAILY_WITHDRAWAL_LIMIT } from '../../constants.js'
 import { formatCurrency, formatIsoDate, getGameDateString } from '../../utils.js'
@@ -18,6 +21,10 @@ export default function ClientScreen() {
   const queryClient = useQueryClient()
   const [depositAmount, setDepositAmount] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [savingsDeposit, setSavingsDeposit] = useState('')
+  const [savingsWithdraw, setSavingsWithdraw] = useState('')
+  const [selectedJobId, setSelectedJobId] = useState('')
+  const [selectedRentalId, setSelectedRentalId] = useState('')
   const [error, setError] = useState('')
   const [showTransactions, setShowTransactions] = useState(false)
 
@@ -34,6 +41,9 @@ export default function ClientScreen() {
 
   const transactionsQuery = useTransactions(currentSlot, clientId, true)
   const ownedPropertiesQuery = useClientProperties(currentSlot, clientId, true)
+  const jobsQuery = useJobs(currentSlot)
+  const rentalsQuery = useRentals(currentSlot)
+  const livingQuery = useLiving(currentSlot, clientId)
 
   const depositMutation = useMutation({
     mutationFn: ({ slotId, clientId: cid, amount }) =>
@@ -69,8 +79,80 @@ export default function ClientScreen() {
     onError: (err) => setError(err.message),
   })
 
+  const savingsDepositMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid, amount }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${cid}/savings/deposit`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+      }),
+    onSuccess: () => {
+      setSavingsDeposit('')
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['clients', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['transactions', currentSlot, clientId] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const savingsWithdrawMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid, amount }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${cid}/savings/withdraw`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+      }),
+    onSuccess: () => {
+      setSavingsWithdraw('')
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['clients', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['transactions', currentSlot, clientId] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const assignJobMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid, jobId }) =>
+      apiFetch(`${API_BASE}/${slotId}/jobs/clients/${cid}/assign/${jobId}`, { method: 'POST' }),
+    onSuccess: () => {
+      setSelectedJobId('')
+      queryClient.invalidateQueries({ queryKey: ['clients', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['jobs', currentSlot] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const assignRentalMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid, rentalId }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${cid}/living/rental/${rentalId}`, { method: 'POST' }),
+    onSuccess: () => {
+      setSelectedRentalId('')
+      queryClient.invalidateQueries({ queryKey: ['living', currentSlot, clientId] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const assignOwnedMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid, propertyId }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${cid}/living/owned/${propertyId}`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['living', currentSlot, clientId] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const spendingMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${cid}/spendings/run`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', currentSlot, clientId] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
   const transactions = transactionsQuery.data || []
   const ownedProperties = ownedPropertiesQuery.data || []
+  const jobs = jobsQuery.data || []
+  const rentals = rentalsQuery.data || []
+  const living = livingQuery.data || null
 
   const totalWithdrawnToday = useMemo(() => {
     const today = transactions.filter((tx) => tx.type === 'WITHDRAWAL' && tx.gameDay === selectedClient?.gameDay)
@@ -117,6 +199,9 @@ export default function ClientScreen() {
       <Panel>
         <h2 className="bw-header">
           Client: <span id="client-view-name">{selectedClient?.name}</span>
+          {selectedClient?.bankrupt && (
+            <span className="ml-2 px-2 py-1 rounded bg-red-100 text-red-700 text-xs">BANKRUPT</span>
+          )}
         </h2>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
@@ -124,12 +209,47 @@ export default function ClientScreen() {
             <p>
               Balance: $<span id="client-view-balance">{formatCurrency(selectedClient?.checkingBalance || 0)}</span>
             </p>
+            <p className="text-xs text-gray-500">
+              Savings: ${formatCurrency(selectedClient?.savingsBalance || 0)}
+            </p>
           </div>
           <div>
             <h3 className="text-sm font-semibold mb-1 uppercase">Debit Card</h3>
             <p className="text-xs">Number: {selectedClient?.cardNumber}</p>
             <p className="text-xs">Expires: {selectedClient?.cardExpiry}</p>
             <p className="text-xs">CVV: {selectedClient?.cardCvv}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <h3 className="text-sm font-semibold mb-1 uppercase">Income & Obligations</h3>
+            <p className="text-xs">Monthly income: ${formatCurrency(selectedClient?.monthlyIncome || 0)}</p>
+            <p className="text-xs">Mandatory spend: ${formatCurrency(selectedClient?.monthlyMandatory || 0)}</p>
+            <p className="text-xs">Discretionary target: ${formatCurrency(selectedClient?.monthlyDiscretionary || 0)}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold mb-1 uppercase">Employment</h3>
+            <p className="text-xs mb-1">Status: {selectedClient?.employmentStatus}</p>
+            <label className="bw-label mt-2 block">Assign Job</label>
+            <div className="flex gap-2">
+              <select className="bw-input flex-1" value={selectedJobId} onChange={(e) => setSelectedJobId(e.target.value)}>
+                <option value="">Choose job</option>
+                {jobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.title} @ {job.employer} (${formatCurrency(job.annualSalary)})
+                  </option>
+                ))}
+              </select>
+              <button
+                className="bw-button"
+                onClick={() =>
+                  selectedJobId && assignJobMutation.mutate({ slotId: currentSlot, clientId, jobId: selectedJobId })
+                }
+                disabled={assignJobMutation.isPending}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
         <div className="dual-action-card dual-action-card-left mb-4">
@@ -185,6 +305,105 @@ export default function ClientScreen() {
             </p>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-4 analytics-grid client-action-grid mt-4">
+          <div>
+            <label className="bw-label">Move to Savings</label>
+            <input
+              type="number"
+              className="bw-input"
+              placeholder="Amount"
+              value={savingsDeposit}
+              onChange={(e) => setSavingsDeposit(e.target.value)}
+            />
+            <button
+              className="bw-button w-full"
+              onClick={() =>
+                savingsDeposit &&
+                savingsDepositMutation.mutate({ slotId: currentSlot, clientId, amount: Number(savingsDeposit) })
+              }
+              disabled={savingsDepositMutation.isPending}
+            >
+              Transfer ➜ Savings
+            </button>
+          </div>
+          <div>
+            <label className="bw-label">Move to Checking</label>
+            <input
+              type="number"
+              className="bw-input"
+              placeholder="Amount"
+              value={savingsWithdraw}
+              onChange={(e) => setSavingsWithdraw(e.target.value)}
+            />
+            <button
+              className="bw-button w-full"
+              onClick={() =>
+                savingsWithdraw &&
+                savingsWithdrawMutation.mutate({ slotId: currentSlot, clientId, amount: Number(savingsWithdraw) })
+              }
+              disabled={savingsWithdrawMutation.isPending}
+            >
+              Transfer ➜ Checking
+            </button>
+          </div>
+        </div>
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold mb-1 uppercase">Living</h3>
+          <p className="text-xs mb-2">
+            Current: {living ? living.livingType : 'Not set'}{' '}
+            {living?.rentalId && `(Rental #${living.rentalId})`} {living?.propertyId && `(Property #${living.propertyId})`}{' '}
+            {living?.monthlyRent ? `• Rent $${formatCurrency(living.monthlyRent)}` : ''}
+          </p>
+          <div className="flex gap-2 mb-2">
+            <select className="bw-input flex-1" value={selectedRentalId} onChange={(e) => setSelectedRentalId(e.target.value)}>
+              <option value="">Choose rental</option>
+              {rentals.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} ${formatCurrency(r.monthlyRent)}
+                </option>
+              ))}
+            </select>
+            <button
+              className="bw-button"
+              onClick={() =>
+                selectedRentalId &&
+                assignRentalMutation.mutate({ slotId: currentSlot, clientId, rentalId: selectedRentalId })
+              }
+              disabled={assignRentalMutation.isPending}
+            >
+              Set Rental
+            </button>
+          </div>
+          <div className="flex gap-2 mb-2">
+            <select
+              className="bw-input flex-1"
+              value=""
+              onChange={(e) =>
+                e.target.value &&
+                assignOwnedMutation.mutate({ slotId: currentSlot, clientId, propertyId: e.target.value })
+              }
+            >
+              <option value="">Use owned property</option>
+              {ownedProperties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold mb-1 uppercase">Spending</h3>
+          <button
+            className="bw-button"
+            onClick={() => spendingMutation.mutate({ slotId: currentSlot, clientId })}
+            disabled={spendingMutation.isPending}
+          >
+            Run Daily Spending
+          </button>
+        </div>
+
         <p id="client-error-message" className="text-red-600 text-xs mt-2 text-center">
           {error}
         </p>

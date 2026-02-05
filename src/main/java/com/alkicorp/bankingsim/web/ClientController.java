@@ -96,10 +96,18 @@ public class ClientController {
             .id(client.getId())
             .name(client.getName())
             .checkingBalance(client.getCheckingBalance())
+            .savingsBalance(client.getSavingsBalance())
             .dailyWithdrawn(client.getDailyWithdrawn())
+            .monthlyIncome(client.getMonthlyIncomeCache())
+            .monthlyMandatory(client.getMonthlyMandatoryCache())
+            .monthlyDiscretionary(client.getMonthlyDiscretionaryTarget())
             .cardNumber(client.getCardNumber())
             .cardExpiry(client.getCardExpiry())
             .cardCvv(client.getCardCvv())
+            .employmentStatus(client.getEmploymentStatus())
+            .bankrupt(client.getBankrupt())
+            .bankruptUntil(client.getBankruptUntil())
+            .purchasingBlockReason(client.getPurchasingBlockReason())
             .build();
     }
 
