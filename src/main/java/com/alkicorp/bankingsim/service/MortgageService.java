@@ -69,6 +69,7 @@ public class MortgageService {
         mortgage.setPropertyPrice(price);
         mortgage.setDownPayment(downPayment);
         mortgage.setLoanAmount(loanAmount);
+        mortgage.setTotalPaid(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         mortgage.setTermYears(termYears);
         mortgage.setInterestRate(interestRate);
         mortgage.setStatus(MortgageStatus.PENDING);
@@ -81,6 +82,8 @@ public class MortgageService {
         mortgage.setWrittenOff(false);
         mortgage.setNextPaymentDay(null);
         mortgage.setMonthlyPayment(null);
+        mortgage.setStartPaymentDay(null);
+        mortgage.setPaymentsMade(0);
         mortgage.setAprSnapshot(null);
         mortgage.setLtvAtOrigination(null);
         return mortgageRepository.save(mortgage);
@@ -126,6 +129,8 @@ public class MortgageService {
                 clientRepository.save(client);
                 recordTransaction(client, state, TransactionType.MORTGAGE_DOWN_PAYMENT, downPayment);
             }
+            BigDecimal paidSoFar = mortgage.getTotalPaid() == null ? BigDecimal.ZERO : mortgage.getTotalPaid();
+            mortgage.setTotalPaid(paidSoFar.add(downPayment));
             product.setStatus(ProductStatus.OWNED);
             product.setOwnerClient(mortgage.getClient());
             productRepository.save(product);
@@ -136,7 +141,18 @@ public class MortgageService {
                         ? mortgage.getLoanAmount().divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP)
                         : mortgage.getLoanAmount();
                 mortgage.setMonthlyPayment(monthlyPayment);
-                mortgage.setNextPaymentDay((int) Math.floor(state.getGameDay()) + SimulationConstants.REPAYMENT_PERIOD_DAYS);
+                int startPaymentDay = (int) Math.floor(state.getGameDay());
+                mortgage.setStartPaymentDay(startPaymentDay);
+                mortgage.setNextPaymentDay(startPaymentDay + SimulationConstants.REPAYMENT_PERIOD_DAYS);
+            }
+            if (mortgage.getTotalPaid() == null) {
+                mortgage.setTotalPaid(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+            }
+            if (mortgage.getPaymentsMade() == null) {
+                mortgage.setPaymentsMade(0);
+            }
+            if (downPayment.compareTo(BigDecimal.ZERO) > 0) {
+                mortgage.setTotalPaid(mortgage.getTotalPaid().add(downPayment).setScale(2, RoundingMode.HALF_UP));
             }
         } else if (status == MortgageStatus.REJECTED) {
             // Remove property from market even if rejected, as requested

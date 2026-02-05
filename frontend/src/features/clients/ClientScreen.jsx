@@ -7,7 +7,7 @@ import { useSlot } from '../../providers/SlotProvider.jsx'
 import { useClients } from '../../hooks/useClients.js'
 import { useTransactions } from '../../hooks/useTransactions.js'
 import { useMonthlyCashflow } from '../../hooks/useMonthlyCashflow.js'
-import { useClientProperties } from '../../hooks/useMortgages.js'
+import { useClientProperties, useMortgages } from '../../hooks/useMortgages.js'
 import { useJobs } from '../../hooks/useJobs.js'
 import { useRentals } from '../../hooks/useRentals.js'
 import { useLiving } from '../../hooks/useLiving.js'
@@ -33,6 +33,7 @@ export default function ClientScreen() {
   const [transactionDateOrder, setTransactionDateOrder] = useState('DESC')
   const [selectedYear, setSelectedYear] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState(null)
+  const [selectedProperty, setSelectedProperty] = useState(null)
 
   const depositTypes = useMemo(
     () =>
@@ -72,6 +73,7 @@ export default function ClientScreen() {
 
   const transactionsQuery = useTransactions(currentSlot, clientId, true)
   const ownedPropertiesQuery = useClientProperties(currentSlot, clientId, true)
+  const mortgagesQuery = useMortgages(currentSlot, true)
   const jobsQuery = useJobs(currentSlot)
   const rentalsQuery = useRentals(currentSlot)
   const livingQuery = useLiving(currentSlot, clientId)
@@ -199,9 +201,22 @@ export default function ClientScreen() {
 
   const transactions = transactionsQuery.data || []
   const ownedProperties = ownedPropertiesQuery.data || []
+  const mortgages = mortgagesQuery.data || []
   const jobs = jobsQuery.data || []
   const rentals = rentalsQuery.data || []
   const living = livingQuery.data || null
+
+  const mortgageByPropertyId = useMemo(() => {
+    const map = new Map()
+    mortgages
+      .filter((mortgage) => String(mortgage.clientId) === String(clientId) && mortgage.status === 'ACCEPTED')
+      .forEach((mortgage) => {
+        if (mortgage.productId != null) {
+          map.set(String(mortgage.productId), mortgage)
+        }
+      })
+    return map
+  }, [clientId, mortgages])
 
   const availableMonthsByYear = useMemo(() => {
     const monthMap = new Map()
@@ -572,6 +587,9 @@ export default function ClientScreen() {
                     {property.rooms} rooms • {property.sqft2} sqft
                   </div>
                   <div className="property-price">${formatCurrency(property.price)}</div>
+                  <button className="bw-button w-full mt-2" type="button" onClick={() => setSelectedProperty(property)}>
+                    View Details
+                  </button>
                   <button
                     className="bw-button w-full mt-2"
                     onClick={() =>
@@ -727,6 +745,71 @@ export default function ClientScreen() {
           <span className="btn-icon">🏦</span> Back to Bank View
         </button>
       </Panel>
+
+      {selectedProperty && (
+        <Modal
+          title={
+            <span className="flex items-center gap-2">
+              <span className="header-icon">🏠</span> {selectedProperty.name}
+            </span>
+          }
+          onClose={() => setSelectedProperty(null)}
+        >
+          <PropertyImage src={selectedProperty.imageUrl} alt={`${selectedProperty.name} photo`} />
+          <div className="property-body">
+            <div className="property-title mt-2">{selectedProperty.name}</div>
+            <div className="property-meta">
+              {selectedProperty.rooms} rooms • {selectedProperty.sqft2} sqft
+            </div>
+            <div className="property-price">${formatCurrency(selectedProperty.price)}</div>
+          </div>
+          {(() => {
+            const mortgage = mortgageByPropertyId.get(String(selectedProperty.id))
+            if (!mortgage) {
+              return <p className="text-xs text-gray-500 mt-2">No mortgage details found for this property.</p>
+            }
+            const totalMonths = Math.max(0, Number(mortgage.termYears || 0) * 12)
+            const paymentsMade = Math.max(0, Number(mortgage.paymentsMade || 0))
+            const remainingMonths = Math.max(0, totalMonths - paymentsMade)
+            const remainingYears = Math.floor(remainingMonths / 12)
+            const remainingMonthRemainder = remainingMonths % 12
+            return (
+              <div className="mt-3 text-xs text-gray-700">
+                <div className="flex items-center justify-between">
+                  <span className="uppercase text-gray-500">Paid So Far</span>
+                  <span className="font-semibold">${formatCurrency(mortgage.totalPaid || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="uppercase text-gray-500">Monthly Payment</span>
+                  <span className="font-semibold">${formatCurrency(mortgage.monthlyPayment || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="uppercase text-gray-500">Payments Made</span>
+                  <span className="font-semibold">{paymentsMade}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="uppercase text-gray-500">Time Left</span>
+                  <span className="font-semibold">
+                    Y{remainingYears} M{remainingMonthRemainder}
+                  </span>
+                </div>
+                {Number.isFinite(mortgage.nextPaymentDay) && (
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="uppercase text-gray-500">Next Payment</span>
+                    <span className="font-semibold">{getGameDateString(mortgage.nextPaymentDay)}</span>
+                  </div>
+                )}
+                {mortgage.lastPaymentStatus && (
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="uppercase text-gray-500">Last Status</span>
+                    <span className="font-semibold">{mortgage.lastPaymentStatus}</span>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </Modal>
+      )}
 
       {showTransactions && (
         <Modal title="Transaction History" onClose={() => setShowTransactions(false)}>

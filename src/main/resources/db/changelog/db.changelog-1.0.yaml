@@ -1496,3 +1496,30 @@ databaseChangeLog:
               - column: {name: min_pct_income, valueNumeric: 0.01}
               - column: {name: max_pct_income, valueNumeric: 0.05}
             where: "name = 'Shopping'"
+  - changeSet:
+      id: 35-add-mortgage-tracking-fields
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists: {tableName: mortgages}
+      changes:
+        - addColumn:
+            tableName: mortgages
+            columns:
+              - column:
+                  name: start_payment_day
+                  type: INT
+              - column:
+                  name: payments_made
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_paid
+                  type: "DECIMAL(19,2)"
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false

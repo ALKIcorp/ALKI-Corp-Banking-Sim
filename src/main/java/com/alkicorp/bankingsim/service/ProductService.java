@@ -11,6 +11,7 @@ import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.ClientLivingRepository;
 import com.alkicorp.bankingsim.repository.BankStateRepository;
+import com.alkicorp.bankingsim.repository.MortgageRepository;
 import com.alkicorp.bankingsim.repository.ProductRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
 import jakarta.validation.ValidationException;
@@ -35,6 +36,7 @@ public class ProductService {
     private final BankStateRepository bankStateRepository;
     private final ClientLivingRepository clientLivingRepository;
     private final TransactionRepository transactionRepository;
+    private final MortgageRepository mortgageRepository;
     private final SimulationService simulationService;
     private final CurrentUserService currentUserService;
     private final Clock clock = Clock.systemUTC();
@@ -120,6 +122,18 @@ public class ProductService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owned property not found"));
         if (product.getStatus() != ProductStatus.OWNED) {
             throw new ValidationException("Property is not owned.");
+        }
+        for (var mortgage : mortgageRepository.findByProductIdAndClientIdAndStatus(
+                product.getId(),
+                client.getId(),
+                com.alkicorp.bankingsim.model.enums.MortgageStatus.ACCEPTED)) {
+            if (mortgage.getPropertyPrice() == null) {
+                continue;
+            }
+            BigDecimal paid = mortgage.getTotalPaid() == null ? BigDecimal.ZERO : mortgage.getTotalPaid();
+            if (paid.compareTo(mortgage.getPropertyPrice()) < 0) {
+                throw new ValidationException("Mortgage must be fully paid before selling this property.");
+            }
         }
 
         BankState state = simulationService.getAndAdvanceState(user, slotId)

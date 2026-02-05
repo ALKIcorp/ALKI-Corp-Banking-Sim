@@ -39,10 +39,11 @@ class PayrollControllerTest {
         state.setGameDay(17.5);
 
         when(currentUserService.getCurrentUser()).thenReturn(user);
+        when(user.getId()).thenReturn(7L);
         when(simulationService.getAndAdvanceState(user, 1)).thenReturn(Optional.of(state));
 
         controller.run(1);
 
-        verify(payrollService).runPayroll(1, 17.5);
+        verify(payrollService).runPayroll(1, 7L, 17.5);
     }
 }

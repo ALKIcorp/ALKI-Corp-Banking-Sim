@@ -372,11 +372,26 @@ public class SimulationService {
                 if (payAmount.compareTo(amountDue) < 0) {
                     mortgage.setMissedPayments(mortgage.getMissedPayments() + 1);
                 }
+                BigDecimal totalPaid = mortgage.getTotalPaid() == null
+                        ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                        : mortgage.getTotalPaid();
+                BigDecimal updatedPaid = totalPaid.add(payAmount).setScale(2, RoundingMode.HALF_UP);
+                if (mortgage.getPropertyPrice() != null
+                        && updatedPaid.compareTo(mortgage.getPropertyPrice()) >= 0) {
+                    updatedPaid = mortgage.getPropertyPrice();
+                    mortgage.setNextPaymentDay(null);
+                    mortgage.setLastPaymentStatus("PAID_OFF");
+                }
+                mortgage.setTotalPaid(updatedPaid);
             } else {
                 mortgage.setLastPaymentStatus("MISSED");
                 mortgage.setMissedPayments(mortgage.getMissedPayments() + 1);
             }
-            mortgage.setNextPaymentDay(day + SimulationConstants.REPAYMENT_PERIOD_DAYS);
+            Integer paymentsMade = mortgage.getPaymentsMade();
+            mortgage.setPaymentsMade((paymentsMade == null ? 0 : paymentsMade) + 1);
+            if (mortgage.getNextPaymentDay() != null) {
+                mortgage.setNextPaymentDay(day + SimulationConstants.REPAYMENT_PERIOD_DAYS);
+            }
             mortgage.setUpdatedAt(now);
             mortgageRepository.save(mortgage);
             clientRepository.save(client);

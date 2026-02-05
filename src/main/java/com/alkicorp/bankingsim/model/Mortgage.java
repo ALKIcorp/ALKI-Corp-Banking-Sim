@@ -54,6 +54,9 @@ public class Mortgage {
     @Column(name = "loan_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal loanAmount;
 
+    @Column(name = "total_paid", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalPaid;
+
     @Column(name = "term_years", nullable = false)
     private Integer termYears;
 
@@ -85,8 +88,14 @@ public class Mortgage {
     @Column(name = "next_payment_day")
     private Integer nextPaymentDay;
 
+    @Column(name = "payments_made", nullable = false)
+    private Integer paymentsMade;
+
     @Column(name = "monthly_payment", precision = 19, scale = 2)
     private BigDecimal monthlyPayment;
+
+    @Column(name = "start_payment_day")
+    private Integer startPaymentDay;
 
     @Column(name = "apr_snapshot", precision = 6, scale = 4)
     private BigDecimal aprSnapshot;

@@ -16,8 +16,15 @@ public class MortgageResponse {
     BigDecimal propertyPrice;
     BigDecimal downPayment;
     BigDecimal loanAmount;
+    BigDecimal totalPaid;
     int termYears;
     BigDecimal interestRate;
+    BigDecimal monthlyPayment;
+    Integer nextPaymentDay;
+    Integer startPaymentDay;
+    Integer paymentsMade;
+    String lastPaymentStatus;
+    Integer missedPayments;
     String status;
     Instant createdAt;
     Instant updatedAt;

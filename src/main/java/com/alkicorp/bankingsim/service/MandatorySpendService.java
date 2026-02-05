@@ -49,6 +49,11 @@ public class MandatorySpendService {
                     && mortgage.getProduct().getStatus() == com.alkicorp.bankingsim.model.enums.ProductStatus.OWNED
                     && mortgage.getProduct().getOwnerClient() != null
                     && client.getId().equals(mortgage.getProduct().getOwnerClient().getId())) {
+                BigDecimal totalPaid = mortgage.getTotalPaid() == null ? BigDecimal.ZERO : mortgage.getTotalPaid();
+                if (mortgage.getPropertyPrice() != null
+                        && totalPaid.compareTo(mortgage.getPropertyPrice()) >= 0) {
+                    continue;
+                }
                 total = total.add(mortgage.getMonthlyPayment());
             }
         }

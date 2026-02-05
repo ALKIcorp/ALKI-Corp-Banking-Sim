@@ -55,13 +55,16 @@ class PayrollServiceTest {
         clientJob.setClient(client);
         clientJob.setJob(job);
         clientJob.setNextPayday(10.0);
+        clientJob.setPrimary(true);
     }
 
     @Test
     void runPayroll_WhenPaydayIsReached_PaysClient() {
-        when(clientJobRepository.findBySlotId(1)).thenReturn(List.of(clientJob));
+        Long userId = 1L;
+        when(clientJobRepository.findBySlotIdAndClientBankStateUserId(1, userId))
+                .thenReturn(List.of(clientJob));
 
-        payrollService.runPayroll(1, 10.0);
+        payrollService.runPayroll(1, userId, 10.0);
 
         // Expected pay: 36500 / 12 = 3041.666... -> 3041.67
         // New balance: 1000 + 3041.67 = 4041.67
@@ -75,9 +78,11 @@ class PayrollServiceTest {
 
     @Test
     void runPayroll_WhenPaydayIsNotReached_DoesNotPay() {
-        when(clientJobRepository.findBySlotId(1)).thenReturn(List.of(clientJob));
+        Long userId = 1L;
+        when(clientJobRepository.findBySlotIdAndClientBankStateUserId(1, userId))
+                .thenReturn(List.of(clientJob));
 
-        payrollService.runPayroll(1, 9.0);
+        payrollService.runPayroll(1, userId, 9.0);
 
         assertEquals(new BigDecimal("1000.00"), client.getCheckingBalance());
         assertEquals(10.0, clientJob.getNextPayday());
