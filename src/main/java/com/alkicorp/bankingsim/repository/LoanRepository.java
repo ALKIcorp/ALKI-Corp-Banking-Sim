@@ -10,6 +10,8 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     List<Loan> findBySlotIdAndUserId(int slotId, Long userId);
 
+    List<Loan> findByClientId(Long clientId);
+
     Optional<Loan> findByIdAndSlotId(Long id, int slotId);
 
     Optional<Loan> findByIdAndSlotIdAndUserId(Long id, int slotId, Long userId);

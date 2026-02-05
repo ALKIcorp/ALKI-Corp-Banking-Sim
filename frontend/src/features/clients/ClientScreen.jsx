@@ -190,16 +190,23 @@ export default function ClientScreen() {
   const living = livingQuery.data || null
 
   const monthToDateCashflow = useMemo(() => {
-    const now = new Date()
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const currentGameMonth = selectedClient?.gameDay
+    if (currentGameMonth === null || currentGameMonth === undefined) {
+      return {
+        monthLabel: '—',
+        income: 0,
+        spending: 0,
+        net: 0,
+        spendingVsIncomePct: 0,
+        gameMonth: null,
+      }
+    }
 
     let income = 0
     let spending = 0
 
     transactions.forEach((tx) => {
-      const created = new Date(tx.createdAt)
-      if (created >= start && created < end) {
+      if (Number(tx.gameDay) === Number(currentGameMonth)) {
         const amount = Number(tx.amount || 0)
         if (depositTypes.has(tx.type)) {
           income += amount
@@ -213,15 +220,14 @@ export default function ClientScreen() {
     const spendingVsIncomePct = income > 0 ? (spending / income) * 100 : 0
 
     return {
-      monthLabel: now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-      start,
-      end,
+      monthLabel: getGameDateString(currentGameMonth),
+      gameMonth: currentGameMonth,
       income,
       spending,
       net,
       spendingVsIncomePct,
     }
-  }, [depositTypes, transactions])
+  }, [depositTypes, selectedClient?.gameDay, transactions])
 
   const transactionTypeOptions = useMemo(() => {
     const uniqueTypes = new Set(transactions.map((tx) => tx.type))
@@ -351,40 +357,6 @@ export default function ClientScreen() {
               </button>
             </div>
           </div>
-        </div>
-        <div className="mt-2 p-3 rounded border bg-gray-50">
-          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-            <span>Month-to-date cashflow</span>
-            <span>{monthToDateCashflow.monthLabel}</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-sm mb-2">
-            <div>
-              <div className="text-gray-500 text-[11px] uppercase">Income</div>
-              <div className="font-semibold text-green-700">${formatCurrency(monthToDateCashflow.income)}</div>
-            </div>
-            <div>
-              <div className="text-gray-500 text-[11px] uppercase">Spending</div>
-              <div className="font-semibold text-red-700">${formatCurrency(monthToDateCashflow.spending)}</div>
-            </div>
-            <div>
-              <div className="text-gray-500 text-[11px] uppercase">Net</div>
-              <div className={`font-semibold ${monthToDateCashflow.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                ${formatCurrency(monthToDateCashflow.net)}
-              </div>
-            </div>
-          </div>
-          <div className="text-[11px] text-gray-500 mb-1">
-            Spending vs income: {monthToDateCashflow.spendingVsIncomePct.toFixed(1)}%
-          </div>
-          <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
-            <div
-              className={`h-2 ${monthToDateCashflow.spendingVsIncomePct <= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
-              style={{ width: `${Math.min(monthToDateCashflow.spendingVsIncomePct, 160)}%` }}
-            />
-          </div>
-          <p className="text-[11px] text-gray-500 mt-1">
-            Window: {monthToDateCashflow.start.toLocaleDateString()} – {monthToDateCashflow.end.toLocaleDateString()} (resets on the 1st; live updates with new transactions)
-          </p>
         </div>
         <div className="dual-action-card dual-action-card-left mb-4">
           <Link className="dual-action-option dual-action-option-loan" to="/applications">
@@ -566,9 +538,8 @@ export default function ClientScreen() {
               </div>
             </div>
           ))}
+          </div>
         </div>
-      </div>
-
         <div className="transaction-log">
           <h4 className="flex items-center justify-between">
             <span>
@@ -580,7 +551,7 @@ export default function ClientScreen() {
           </h4>
           <div className="flex flex-wrap gap-2 mb-2 items-center">
             <select
-              className="bw-input flex-1 min-w-[140px]"
+              className="transaction-filter-select"
               value={transactionTypeFilter}
               onChange={(e) => setTransactionTypeFilter(e.target.value)}
             >
@@ -591,7 +562,7 @@ export default function ClientScreen() {
               ))}
             </select>
             <select
-              className="bw-input flex-1 min-w-[140px]"
+              className="transaction-filter-select"
               value={transactionDateOrder}
               onChange={(e) => setTransactionDateOrder(e.target.value)}
             >
@@ -623,6 +594,52 @@ export default function ClientScreen() {
             })}
           </div>
         </div>
+
+        <div className="mt-4 rounded-lg border bg-white shadow-sm p-4">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <span className="font-semibold text-gray-700">Month-to-date</span>
+            <span>{monthToDateCashflow.monthLabel}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-lg">💰</span>
+              <div className="text-[11px] uppercase text-gray-500">Income</div>
+              <div className="text-base font-semibold text-green-700">
+                ${formatCurrency(monthToDateCashflow.income)}
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-lg">🛒</span>
+              <div className="text-[11px] uppercase text-gray-500">Spending</div>
+              <div className="text-base font-semibold text-red-700">
+                ${formatCurrency(monthToDateCashflow.spending)}
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-lg">{monthToDateCashflow.net >= 0 ? '📈' : '📉'}</span>
+              <div className="text-[11px] uppercase text-gray-500">Net</div>
+              <div className={`text-base font-semibold ${monthToDateCashflow.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                ${formatCurrency(monthToDateCashflow.net)}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
+              <span>Spending vs income</span>
+              <span>{monthToDateCashflow.spendingVsIncomePct.toFixed(1)}%</span>
+            </div>
+            <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
+              <div
+                className={`h-2 ${monthToDateCashflow.spendingVsIncomePct <= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                style={{ width: `${Math.min(monthToDateCashflow.spendingVsIncomePct, 160)}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1">
+              Window: {monthToDateCashflow.monthLabel} (resets each in‑game month; live updates with transactions)
+            </p>
+          </div>
+        </div>
+
         <button
           className="bw-button mt-2 self-center"
           onClick={() => {

@@ -991,6 +991,15 @@ body {
   margin-top: auto;
 }
 
+.property-card .bw-button {
+  width: 100%;
+  margin: 6px 0 0; /* remove side margins that caused overflow */
+  white-space: normal; /* allow long prices to wrap instead of overflowing */
+  word-break: break-word;
+  line-height: 1.3;
+  justify-content: center;
+}
+
 .property-modal-image {
   display: block;
   width: 100%;

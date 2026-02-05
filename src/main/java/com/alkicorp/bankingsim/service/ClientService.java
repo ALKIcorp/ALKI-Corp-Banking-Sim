@@ -70,9 +70,13 @@ public class ClientService {
         return clientRepository.save(client);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Client> getClients(int slotId) {
         User user = currentUserService.getCurrentUser();
+        // Advance the simulation so payroll/spending post before returning balances.
+        simulationService.getAndAdvanceState(user, slotId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         return clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
     }
 
@@ -84,9 +88,12 @@ public class ClientService {
         return clientJobRepository.findFirstByClientIdAndPrimaryTrueOrderByStartDateDesc(client.getId());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Client getClient(int slotId, Long clientId) {
         User user = currentUserService.getCurrentUser();
+        simulationService.getAndAdvanceState(user, slotId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         return clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
     }
@@ -135,8 +142,12 @@ public class ClientService {
         return creditAccount(slotId, clientId, amount, TransactionType.MORTGAGE_DOWN_PAYMENT_FUNDING, false);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Transaction> getTransactions(Long clientId, int slotId) {
+        User user = currentUserService.getCurrentUser();
+        simulationService.getAndAdvanceState(user, slotId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
         return transactionRepository.findByClientOrderByCreatedAtDesc(client);
     }

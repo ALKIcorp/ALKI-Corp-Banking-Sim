@@ -10,6 +10,8 @@ public interface MortgageRepository extends JpaRepository<Mortgage, Long> {
 
     List<Mortgage> findBySlotIdAndUserId(int slotId, Long userId);
 
+    List<Mortgage> findByClientId(Long clientId);
+
     Optional<Mortgage> findByIdAndSlotId(Long id, int slotId);
 
     Optional<Mortgage> findByIdAndSlotIdAndUserId(Long id, int slotId, Long userId);

@@ -1,11 +1,19 @@
 package com.alkicorp.bankingsim.service;
 
 import com.alkicorp.bankingsim.model.Client;
+import com.alkicorp.bankingsim.model.ClientLiving;
+import com.alkicorp.bankingsim.model.Loan;
+import com.alkicorp.bankingsim.model.Mortgage;
 import com.alkicorp.bankingsim.model.SpendingCategory;
 import com.alkicorp.bankingsim.model.Transaction;
+import com.alkicorp.bankingsim.model.enums.LoanStatus;
+import com.alkicorp.bankingsim.model.enums.MortgageStatus;
 import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.ClientJobRepository;
+import com.alkicorp.bankingsim.repository.ClientLivingRepository;
+import com.alkicorp.bankingsim.repository.LoanRepository;
+import com.alkicorp.bankingsim.repository.MortgageRepository;
 import com.alkicorp.bankingsim.repository.SpendingCategoryRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
 import java.math.BigDecimal;
@@ -13,6 +21,7 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,6 +36,9 @@ public class SpendingService {
     private final SpendingCategoryRepository spendingCategoryRepository;
     private final ClientRepository clientRepository;
     private final ClientJobRepository clientJobRepository;
+    private final ClientLivingRepository clientLivingRepository;
+    private final LoanRepository loanRepository;
+    private final MortgageRepository mortgageRepository;
     private final TransactionRepository transactionRepository;
     private final Clock clock = Clock.systemUTC();
     private final Random random = new Random();
@@ -52,7 +64,7 @@ public class SpendingService {
         }
 
         BigDecimal monthlyIncome = resolveMonthlyIncome(client);
-        BigDecimal mandatory = client.getMonthlyMandatoryCache() == null ? BigDecimal.ZERO : client.getMonthlyMandatoryCache();
+        BigDecimal mandatory = resolveMonthlyMandatory(client);
         BigDecimal disposableCalc = monthlyIncome.subtract(mandatory);
         if (disposableCalc.compareTo(BigDecimal.ZERO) < 0) {
             disposableCalc = BigDecimal.ZERO;
@@ -109,5 +121,42 @@ public class SpendingService {
         client.setMonthlyIncomeCache(monthlyIncome);
         clientRepository.save(client);
         return monthlyIncome;
+    }
+
+    /**
+     * Recompute mandatory monthly spend for the client from all active obligations:
+     * approved personal loans, accepted mortgages, and current rent. Nothing else is included.
+     */
+    private BigDecimal resolveMonthlyMandatory(Client client) {
+        BigDecimal total = BigDecimal.ZERO;
+
+        // Approved personal loans
+        for (Loan loan : loanRepository.findByClientId(client.getId())) {
+            if (loan.getStatus() == LoanStatus.APPROVED && loan.getMonthlyPayment() != null) {
+                total = total.add(loan.getMonthlyPayment());
+            }
+        }
+
+        // Accepted mortgages
+        for (Mortgage mortgage : mortgageRepository.findByClientId(client.getId())) {
+            if (mortgage.getStatus() == MortgageStatus.ACCEPTED && mortgage.getMonthlyPayment() != null) {
+                total = total.add(mortgage.getMonthlyPayment());
+            }
+        }
+
+        // Current rent (if renting)
+        ClientLiving living = clientLivingRepository
+            .findByClientIdAndSlotId(client.getId(), client.getSlotId())
+            .orElse(null);
+        if (living != null && living.getMonthlyRentCache() != null) {
+            total = total.add(living.getMonthlyRentCache());
+        }
+
+        total = total.setScale(2, RoundingMode.HALF_UP);
+        if (!Objects.equals(client.getMonthlyMandatoryCache(), total)) {
+            client.setMonthlyMandatoryCache(total);
+            clientRepository.save(client);
+        }
+        return total;
     }
 }
