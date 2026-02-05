@@ -350,6 +350,10 @@ body {
   flex: 1 1 0;
   justify-content: flex-end;
 }
+.hud-date {
+  color: #7cf0b4;
+  font-weight: 700;
+}
 .hud-user {
   color: #d7d7d9;
 }

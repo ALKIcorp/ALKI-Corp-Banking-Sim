@@ -4,9 +4,11 @@ import com.alkicorp.bankingsim.auth.model.User;
 import com.alkicorp.bankingsim.auth.service.CurrentUserService;
 import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.model.Client;
+import com.alkicorp.bankingsim.model.ClientJob;
 import com.alkicorp.bankingsim.model.Transaction;
 import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.repository.ClientRepository;
+import com.alkicorp.bankingsim.repository.ClientJobRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
 import jakarta.validation.ValidationException;
 import java.math.BigDecimal;
@@ -26,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class ClientService {
 
     private final ClientRepository clientRepository;
+    private final ClientJobRepository clientJobRepository;
     private final TransactionRepository transactionRepository;
     private final SimulationService simulationService;
     private final CurrentUserService currentUserService;
@@ -71,6 +74,14 @@ public class ClientService {
     public List<Client> getClients(int slotId) {
         User user = currentUserService.getCurrentUser();
         return clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<ClientJob> getPrimaryJob(Client client) {
+        if (client == null || client.getId() == null) {
+            return java.util.Optional.empty();
+        }
+        return clientJobRepository.findFirstByClientIdAndPrimaryTrueOrderByStartDateDesc(client.getId());
     }
 
     @Transactional(readOnly = true)

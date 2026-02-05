@@ -97,7 +97,13 @@ export default function BankDashboard() {
   }
 
   const totalClientFunds = useMemo(() => {
-    return clients.reduce((sum, client) => sum + Number(client?.checkingBalance || 0), 0)
+    return clients.reduce(
+      (sum, client) =>
+        sum +
+        Number(client?.checkingBalance ?? 0) +
+        Number(client?.savingsBalance ?? 0),
+      0,
+    )
   }, [clients])
 
   const availablePropertyValue = useMemo(() => {

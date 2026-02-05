@@ -19,6 +19,12 @@ public class ClientResponse {
     String cardExpiry;
     String cardCvv;
     String employmentStatus;
+    Long primaryJobId;
+    String primaryJobTitle;
+    String primaryJobEmployer;
+    BigDecimal primaryJobAnnualSalary;
+    Integer primaryJobPayCycleDays;
+    java.time.Instant primaryJobStartDate;
     Boolean bankrupt;
     Double bankruptUntil;
     String purchasingBlockReason;

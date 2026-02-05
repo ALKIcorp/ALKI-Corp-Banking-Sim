@@ -100,6 +100,7 @@ public class ClientController {
     }
 
     private ClientResponse toResponse(Client client) {
+        var primaryJobOpt = clientService.getPrimaryJob(client);
         return ClientResponse.builder()
             .id(client.getId())
             .name(client.getName())
@@ -113,6 +114,12 @@ public class ClientController {
             .cardExpiry(client.getCardExpiry())
             .cardCvv(client.getCardCvv())
             .employmentStatus(client.getEmploymentStatus())
+            .primaryJobId(primaryJobOpt.map(cj -> cj.getJob().getId()).orElse(null))
+            .primaryJobTitle(primaryJobOpt.map(cj -> cj.getJob().getTitle()).orElse(null))
+            .primaryJobEmployer(primaryJobOpt.map(cj -> cj.getJob().getEmployer()).orElse(null))
+            .primaryJobAnnualSalary(primaryJobOpt.map(cj -> cj.getJob().getAnnualSalary()).orElse(null))
+            .primaryJobPayCycleDays(primaryJobOpt.map(cj -> cj.getJob().getPayCycleDays()).orElse(null))
+            .primaryJobStartDate(primaryJobOpt.map(com.alkicorp.bankingsim.model.ClientJob::getStartDate).orElse(null))
             .bankrupt(client.getBankrupt())
             .bankruptUntil(client.getBankruptUntil())
             .purchasingBlockReason(client.getPurchasingBlockReason())

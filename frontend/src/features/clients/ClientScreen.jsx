@@ -29,6 +29,19 @@ export default function ClientScreen() {
   const [error, setError] = useState('')
   const [showTransactions, setShowTransactions] = useState(false)
 
+  const depositTypes = useMemo(
+    () =>
+      new Set([
+        'DEPOSIT',
+        'PAYROLL_DEPOSIT',
+        'SAVINGS_DEPOSIT',
+        'LOAN_DISBURSEMENT',
+        'MORTGAGE_DOWN_PAYMENT_FUNDING',
+        'PROPERTY_SALE',
+      ]),
+    []
+  )
+
   const clientsQuery = useClients(currentSlot, true)
   const clients = clientsQuery.data || []
   const selectedClient = clients.find((c) => String(c.id) === String(clientId))
@@ -45,6 +58,7 @@ export default function ClientScreen() {
   const jobsQuery = useJobs(currentSlot)
   const rentalsQuery = useRentals(currentSlot)
   const livingQuery = useLiving(currentSlot, clientId)
+  const mandatorySpend = selectedClient?.monthlyMandatory ?? livingQuery.data?.monthlyRent ?? 0
 
   const depositMutation = useMutation({
     mutationFn: ({ slotId, clientId: cid, amount }) =>
@@ -233,12 +247,23 @@ export default function ClientScreen() {
           <div>
             <h3 className="text-sm font-semibold mb-1 uppercase">Income & Obligations</h3>
             <p className="text-xs">Monthly income: ${formatCurrency(selectedClient?.monthlyIncome || 0)}</p>
-            <p className="text-xs">Mandatory spend: ${formatCurrency(selectedClient?.monthlyMandatory || 0)}</p>
-            <p className="text-xs">Discretionary target: ${formatCurrency(selectedClient?.monthlyDiscretionary || 0)}</p>
+            <p className="text-xs">Mandatory spend: ${formatCurrency(mandatorySpend)}</p>
           </div>
           <div>
             <h3 className="text-sm font-semibold mb-1 uppercase">Employment</h3>
             <p className="text-xs mb-1">Status: {selectedClient?.employmentStatus}</p>
+            {selectedClient?.employmentStatus === 'ACTIVE' ? (
+              selectedClient?.primaryJobTitle ? (
+                <p className="text-xs mb-2">
+                  Job: {selectedClient.primaryJobTitle} @ {selectedClient.primaryJobEmployer} ($
+                  {formatCurrency(selectedClient.primaryJobAnnualSalary || 0)}/yr)
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 mb-2">No job assigned yet.</p>
+              )
+            ) : (
+              <p className="text-xs text-gray-500 mb-2">Not currently employed.</p>
+            )}
             <label className="bw-label mt-2 block">Assign Job</label>
             <div className="flex gap-2">
               <select className="bw-input flex-1" value={selectedJobId} onChange={(e) => setSelectedJobId(e.target.value)}>
@@ -452,11 +477,7 @@ export default function ClientScreen() {
           <div id="client-log-area" className="log-area">
             {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
             {transactions.map((tx) => {
-              const isDeposit =
-                tx.type === 'DEPOSIT' ||
-                tx.type === 'LOAN_DISBURSEMENT' ||
-                tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING' ||
-                tx.type === 'PROPERTY_SALE'
+              const isDeposit = depositTypes.has(tx.type)
               const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
               const typeSymbol = isDeposit ? '➕' : '➖'
               const typeLabel = (() => {
@@ -464,6 +485,8 @@ export default function ClientScreen() {
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
                 if (tx.type === 'PROPERTY_SALE') return 'Property Sale'
+                if (tx.type === 'PAYROLL_DEPOSIT') return 'Payroll Deposit'
+                if (tx.type === 'SAVINGS_DEPOSIT') return 'Savings Deposit'
                 return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
               })()
               return (
@@ -496,11 +519,7 @@ export default function ClientScreen() {
           <div className="modal-client-list border p-2 rounded bg-gray-100">
             {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
             {transactions.map((tx) => {
-              const isDeposit =
-                tx.type === 'DEPOSIT' ||
-                tx.type === 'LOAN_DISBURSEMENT' ||
-                tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING' ||
-                tx.type === 'PROPERTY_SALE'
+              const isDeposit = depositTypes.has(tx.type)
               const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
               const typeSymbol = isDeposit ? '➕' : '➖'
               const typeLabel = (() => {
@@ -508,6 +527,8 @@ export default function ClientScreen() {
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
                 if (tx.type === 'PROPERTY_SALE') return 'Property Sale'
+                if (tx.type === 'PAYROLL_DEPOSIT') return 'Payroll Deposit'
+                if (tx.type === 'SAVINGS_DEPOSIT') return 'Savings Deposit'
                 return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
               })()
               return (

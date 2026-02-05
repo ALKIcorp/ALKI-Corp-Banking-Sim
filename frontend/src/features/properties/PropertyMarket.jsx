@@ -11,7 +11,7 @@ import { formatCurrency } from '../../utils.js'
 import PropertyImage from '../../components/PropertyImage.jsx'
 
 export default function PropertyMarket() {
-  const { currentSlot, selectedClientId } = useSlot()
+  const { currentSlot, selectedClientId, setCurrentSlot, setSelectedClientId } = useSlot()
   const queryClient = useQueryClient()
   const productsQuery = useAllAvailableProducts(true)
   const mortgagesQuery = useMortgages(currentSlot, true)
@@ -37,12 +37,15 @@ export default function PropertyMarket() {
         method: 'POST',
         body: JSON.stringify({ productId, termYears, downPayment }),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const targetSlot = variables?.slotId ?? currentSlot
       setMortgageDownPayment('')
       setSelectedProperty(null)
       setError('')
-      queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
-      queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      if (targetSlot) {
+        queryClient.invalidateQueries({ queryKey: ['mortgages', targetSlot] })
+        queryClient.invalidateQueries({ queryKey: ['products', targetSlot] })
+      }
       queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
     },
     onError: (err) => setError(err.message),
@@ -50,12 +53,20 @@ export default function PropertyMarket() {
 
   const handleApply = () => {
     if (!selectedProperty) return
-    if (!currentSlot || !selectedClientId) {
-      setError('Select a slot and a client to apply for a mortgage.')
+    if (!selectedClientId) {
+      setError('Select a client to apply for a mortgage.')
       return
     }
-    if (selectedProperty.slotId !== currentSlot) {
-      setError(`Switch to slot ${selectedProperty.slotId} to apply for this property.`)
+    const targetSlotId = Number(selectedProperty.slotId ?? currentSlot)
+    if (!targetSlotId) {
+      setError('Unable to determine the slot for this property.')
+      return
+    }
+    // If the user is on a different slot, switch them and ask for a slot-matching client to avoid API 404s.
+    if (currentSlot && targetSlotId !== currentSlot) {
+      setCurrentSlot(targetSlotId)
+      setSelectedClientId(null)
+      setError(`Switched to slot ${targetSlotId}. Select a client in this slot to apply.`)
       return
     }
     const downPayment = Number(mortgageDownPayment || 0)
@@ -68,7 +79,7 @@ export default function PropertyMarket() {
       return
     }
     createMortgageMutation.mutate({
-      slotId: currentSlot,
+      slotId: targetSlotId,
       clientId: selectedClientId,
       productId: selectedProperty.id,
       termYears: mortgageTermYears,
@@ -166,17 +177,11 @@ export default function PropertyMarket() {
                 className="bw-button w-full mt-2"
                 type="button"
                 disabled={
-                  createMortgageMutation.isPending ||
-                  appliedPropertyIds.has(String(selectedProperty.id)) ||
-                  (currentSlot && selectedProperty.slotId !== currentSlot)
+                  createMortgageMutation.isPending || appliedPropertyIds.has(String(selectedProperty.id))
                 }
                 onClick={handleApply}
               >
-                {appliedPropertyIds.has(String(selectedProperty.id))
-                  ? 'Already Applied'
-                  : currentSlot && selectedProperty.slotId !== currentSlot
-                    ? `Switch to slot ${selectedProperty.slotId}`
-                    : 'Apply for Mortgage'}
+                {appliedPropertyIds.has(String(selectedProperty.id)) ? 'Already Applied' : 'Apply for Mortgage'}
               </button>
             </>
           ) : (
