@@ -155,9 +155,9 @@ public class MortgageService {
                 mortgage.setTotalPaid(mortgage.getTotalPaid().add(downPayment).setScale(2, RoundingMode.HALF_UP));
             }
         } else if (status == MortgageStatus.REJECTED) {
-            // Remove property from market even if rejected, as requested
+            // Return property to market on rejection.
             if (product != null && product.getStatus() == ProductStatus.AVAILABLE) {
-                product.setStatus(ProductStatus.REMOVED);
+                product.setStatus(ProductStatus.AVAILABLE);
                 productRepository.save(product);
             }
         }
