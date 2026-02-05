@@ -218,6 +218,19 @@ export default function ClientScreen() {
     return map
   }, [clientId, mortgages])
 
+  const canSellProperty = (property) => {
+    const mortgage = mortgageByPropertyId.get(String(property.id))
+    if (!mortgage) return true
+    const totalMonths = Math.max(0, Number(mortgage.termYears || 0) * 12)
+    const paymentsMade = Math.max(0, Number(mortgage.paymentsMade || 0))
+    const propertyPrice = Number(mortgage.propertyPrice ?? property.price ?? 0)
+    const totalPaid = Number(mortgage.totalPaid || 0)
+    return (
+      (totalMonths > 0 && paymentsMade >= totalMonths) ||
+      (propertyPrice > 0 && totalPaid >= propertyPrice)
+    )
+  }
+
   const availableMonthsByYear = useMemo(() => {
     const monthMap = new Map()
     transactions.forEach((tx) => {
@@ -590,31 +603,29 @@ export default function ClientScreen() {
                   <button className="bw-button w-full mt-2" type="button" onClick={() => setSelectedProperty(property)}>
                     View Details
                   </button>
-                  <button
-                    className="bw-button w-full mt-2"
-                    onClick={() =>
-                      sellPropertyMutation.mutate({
-                        slotId: currentSlot,
-                        clientId,
-                        productId: property.id,
-                      })
-                    }
-                    disabled={(() => {
-                      if (sellPropertyMutation.isPending) return true
-                      const mortgage = mortgageByPropertyId.get(String(property.id))
-                      if (!mortgage) return false
-                      const totalMonths = Math.max(0, Number(mortgage.termYears || 0) * 12)
-                      const paymentsMade = Math.max(0, Number(mortgage.paymentsMade || 0))
-                      const propertyPrice = Number(mortgage.propertyPrice ?? property.price ?? 0)
-                      const totalPaid = Number(mortgage.totalPaid || 0)
-                      const mortgageComplete =
-                        (totalMonths > 0 && paymentsMade >= totalMonths) ||
-                        (propertyPrice > 0 && totalPaid >= propertyPrice)
-                      return !mortgageComplete
-                    })()}
-                  >
-                    Sell for ${formatCurrency(property.price)}
-                  </button>
+                  {(() => {
+                    const canSell = canSellProperty(property)
+                    const tooltip = canSell
+                      ? ''
+                      : 'You can only sell property once the mortgage is paid off.'
+                    return (
+                      <span className="tooltip-wrap" data-tooltip={tooltip}>
+                        <button
+                          className="bw-button w-full mt-2"
+                          onClick={() =>
+                            sellPropertyMutation.mutate({
+                              slotId: currentSlot,
+                              clientId,
+                              productId: property.id,
+                            })
+                          }
+                          disabled={sellPropertyMutation.isPending || !canSell}
+                        >
+                          Sell for ${formatCurrency(property.price)}
+                        </button>
+                      </span>
+                    )
+                  })()}
                 </div>
               </div>
             ))}
