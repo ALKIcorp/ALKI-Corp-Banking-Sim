@@ -1416,6 +1416,7 @@ databaseChangeLog:
               - column: {name: default_active, valueBoolean: true}
               - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
 
+
   - changeSet:
       id: 33-add-created-by-user-to-jobs
       author: codex
@@ -1449,3 +1450,49 @@ databaseChangeLog:
             indexName: idx_jobs_created_by_user
             columns:
               - column: {name: created_by_user_id}
+
+  - changeSet:
+      id: 34-reduce-spending-category-percentages
+      author: alkicorp
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists: {tableName: spending_categories}
+      changes:
+        - update:
+            tableName: spending_categories
+            columns:
+              - column: {name: min_pct_income, valueNumeric: 0.05}
+              - column: {name: max_pct_income, valueNumeric: 0.10}
+            where: "name = 'Groceries'"
+        - update:
+            tableName: spending_categories
+            columns:
+              - column: {name: min_pct_income, valueNumeric: 0.03}
+              - column: {name: max_pct_income, valueNumeric: 0.06}
+            where: "name = 'Utilities'"
+        - update:
+            tableName: spending_categories
+            columns:
+              - column: {name: min_pct_income, valueNumeric: 0.02}
+              - column: {name: max_pct_income, valueNumeric: 0.05}
+            where: "name = 'Transportation'"
+        - update:
+            tableName: spending_categories
+            columns:
+              - column: {name: min_pct_income, valueNumeric: 0.01}
+              - column: {name: max_pct_income, valueNumeric: 0.04}
+            where: "name = 'Healthcare'"
+        - update:
+            tableName: spending_categories
+            columns:
+              - column: {name: min_pct_income, valueNumeric: 0.01}
+              - column: {name: max_pct_income, valueNumeric: 0.05}
+            where: "name = 'Entertainment'"
+        - update:
+            tableName: spending_categories
+            columns:
+              - column: {name: min_pct_income, valueNumeric: 0.01}
+              - column: {name: max_pct_income, valueNumeric: 0.05}
+            where: "name = 'Shopping'"

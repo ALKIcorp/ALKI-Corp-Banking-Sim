@@ -70,12 +70,11 @@ public class BankruptcyService {
     }
 
     @Transactional
-    public void checkDischarge(int slotId) {
+    public void checkDischarge(int slotId, double currentGameDay) {
         List<BankruptcyApplication> apps = bankruptcyApplicationRepository.findBySlotId(slotId);
         for (BankruptcyApplication app : apps) {
             if (app.getStatus() == BankruptcyStatus.APPROVED && app.getDischargeAt() != null) {
-                double nowDay = getCurrentGameDay(slotId);
-                if (nowDay >= app.getDischargeAt()) {
+                if (currentGameDay >= app.getDischargeAt()) {
                     app.setStatus(BankruptcyStatus.FINISHED);
                     Client client = app.getClient();
                     client.setBankrupt(false);
@@ -86,11 +85,6 @@ public class BankruptcyService {
                 }
             }
         }
-    }
-
-    private double getCurrentGameDay(int slotId) {
-        // best effort: assume current user context
-        return 0d;
     }
 
     private double computeDischargeDay(Instant filedAt) {

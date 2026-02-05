@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +30,7 @@ public class ClientController {
     private final ProductService productService;
 
     @GetMapping
+    @Transactional(readOnly = true)
     public List<ClientResponse> listClients(@PathVariable int slotId) {
         return clientService.getClients(slotId).stream()
                 .map(this::toResponse)
@@ -42,11 +44,13 @@ public class ClientController {
     }
 
     @GetMapping("/{clientId}")
+    @Transactional(readOnly = true)
     public ClientResponse getClient(@PathVariable int slotId, @PathVariable Long clientId) {
         return toResponse(clientService.getClient(slotId, clientId));
     }
 
     @GetMapping("/{clientId}/transactions")
+    @Transactional(readOnly = true)
     public List<TransactionResponse> getTransactions(@PathVariable int slotId, @PathVariable Long clientId) {
         List<Transaction> txs = clientService.getTransactions(clientId, slotId);
         return txs.stream().map(this::toResponse).collect(Collectors.toList());

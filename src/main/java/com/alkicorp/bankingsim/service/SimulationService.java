@@ -15,10 +15,6 @@ import com.alkicorp.bankingsim.repository.InvestmentEventRepository;
 import com.alkicorp.bankingsim.repository.LoanRepository;
 import com.alkicorp.bankingsim.repository.MortgageRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
-import com.alkicorp.bankingsim.service.BankruptcyService;
-import com.alkicorp.bankingsim.service.PayrollService;
-import com.alkicorp.bankingsim.service.RentService;
-import com.alkicorp.bankingsim.service.SpendingService;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -58,7 +54,7 @@ public class SimulationService {
         // #region agent log
         System.out.println("  → Resetting slot " + slotId + " (clearing existing data and preparing fresh state)");
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             fw.write(
                     "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:40\",\"message\":\"resetSlot called - WILL DELETE SEED DATA\",\"data\":{\"slotId\":"
@@ -69,7 +65,7 @@ public class SimulationService {
         List<Client> clients = clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
         // #region agent log
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             fw.write(
                     "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H4\",\"location\":\"SimulationService.resetSlot:47\",\"message\":\"Clients found before deletion\",\"data\":{\"slotId\":"
@@ -85,7 +81,7 @@ public class SimulationService {
         investmentEventRepository.deleteBySlotIdAndUserId(slotId, user.getId());
         // #region agent log
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             int afterDeleteCount = clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId()).size();
             fw.write(
@@ -99,7 +95,7 @@ public class SimulationService {
         // #region agent log
         System.out.println("  → Checking if slot " + slotId + " already exists in database...");
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             fw.write(
                     "{\"sessionId\":\"debug-session\",\"runId\":\"post-fix\",\"hypothesisId\":\"H1,H4\",\"location\":\"SimulationService.resetSlot:51\",\"message\":\"Before findBySlotId\",\"data\":{\"slotId\":\""
@@ -116,7 +112,7 @@ public class SimulationService {
             System.out.println("  ✓ No existing bank state found for slot " + slotId + " - will create a new one");
         }
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             fw.write(
                     "{\"sessionId\":\"debug-session\",\"runId\":\"post-fix\",\"hypothesisId\":\"H1,H4\",\"location\":\"SimulationService.resetSlot:52\",\"message\":\"After findBySlotId\",\"data\":{\"slotId\":\""
@@ -130,7 +126,7 @@ public class SimulationService {
             // #region agent log
             System.out.println("  → Creating new bank state object for slot " + slotId);
             try (FileWriter fw = new FileWriter(
-                    "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                    "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                     true)) {
                 fw.write(
                         "{\"sessionId\":\"debug-session\",\"runId\":\"post-fix\",\"hypothesisId\":\"H3\",\"location\":\"SimulationService.resetSlot:53\",\"message\":\"Creating new BankState\",\"data\":{\"slotId\":\""
@@ -148,7 +144,7 @@ public class SimulationService {
                     "  → Preparing to UPDATE existing bank state (ID: " + state.getId() + ") for slot " + slotId);
         }
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             fw.write(
                     "{\"sessionId\":\"debug-session\",\"runId\":\"post-fix\",\"hypothesisId\":\"H3\",\"location\":\"SimulationService.resetSlot:54\",\"message\":\"State before setSlotId\",\"data\":{\"stateId\":"
@@ -172,7 +168,7 @@ public class SimulationService {
         System.out.println("  → Saving bank state to database for slot " + slotId
                 + (state.getId() == null ? " (new record)" : " (updating existing record ID: " + state.getId() + ")"));
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             fw.write(
                     "{\"sessionId\":\"debug-session\",\"runId\":\"post-fix\",\"hypothesisId\":\"H3\",\"location\":\"SimulationService.resetSlot:62\",\"message\":\"Before save\",\"data\":{\"stateId\":"
@@ -186,7 +182,7 @@ public class SimulationService {
         // #region agent log
         System.out.println("  ✓ Successfully saved bank state (ID: " + saved.getId() + ") for slot " + slotId);
         try (FileWriter fw = new FileWriter(
-                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
+                "/Users/alkicorp/Documents/ALKIcorp/B5_CLASSES/TRANSWEB_420-951/project transweb/alkicorp_banking_sim/banking-sim-api/.cursor/debug.log",
                 true)) {
             fw.write(
                     "{\"sessionId\":\"debug-session\",\"runId\":\"post-fix\",\"hypothesisId\":\"H1,H2,H3\",\"location\":\"SimulationService.resetSlot:63\",\"message\":\"After save success\",\"data\":{\"savedId\":"
@@ -247,7 +243,7 @@ public class SimulationService {
                 processMortgageRepayments(state, day);
                 final int dayValue = day; // capture loop value for lambda use
                 clients.forEach(c -> spendingService.generateSpending(state.getSlotId(), c.getId(), dayValue));
-                bankruptcyService.checkDischarge(state.getSlotId());
+                bankruptcyService.checkDischarge(state.getSlotId(), newDayValue);
             }
         }
         // Run payroll with the fractional clock to support more granular triggers

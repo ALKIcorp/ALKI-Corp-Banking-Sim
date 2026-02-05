@@ -75,15 +75,25 @@ public class SpendingService {
         if (disposable.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
         }
+
+        // Random day distribution: each category has a ~1/30 chance per day to trigger
+        // This spreads expenses throughout the month instead of all on the same day
+        double triggerChance = 1.0 / 30.0;
+        if (random.nextDouble() > triggerChance) {
+            return null; // Skip this category today
+        }
+
         double basePct = cat.getMinPctIncome().doubleValue() +
                 random.nextDouble() * (cat.getMaxPctIncome().doubleValue() - cat.getMinPctIncome().doubleValue());
         double variability = cat.getVariability() != null ? cat.getVariability().doubleValue() : 0d;
         double swing = variability > 0 ? (random.nextDouble() * 2 * variability - variability) : 0d; // range [-var,
                                                                                                      // +var]
         double pct = Math.max(0d, basePct * (1 + swing));
-        BigDecimal target = client.getMonthlyIncomeCache() != null
-                ? client.getMonthlyIncomeCache().multiply(BigDecimal.valueOf(pct))
-                : BigDecimal.ZERO;
+
+        // Calculate spending based on DISPOSABLE income (remainder after mandatory
+        // payments)
+        // not total monthly income
+        BigDecimal target = disposable.multiply(BigDecimal.valueOf(pct));
 
         // In this simulation, 1 game day = 1 month (12 days per year).
         // Therefore, the "monthly" target is the daily spend.
@@ -113,6 +123,7 @@ public class SpendingService {
             return client.getMonthlyIncomeCache();
         }
         BigDecimal monthlyIncome = clientJobRepository.findByClientId(client.getId()).stream()
+                .filter(cj -> Boolean.TRUE.equals(cj.getPrimary()))
                 .map(cj -> cj.getJob().getAnnualSalary().divide(BigDecimal.valueOf(SimulationConstants.DAYS_PER_YEAR),
                         2,
                         RoundingMode.HALF_UP))

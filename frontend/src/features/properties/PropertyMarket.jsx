@@ -6,6 +6,7 @@ import Modal from '../../components/Modal.jsx'
 import { useSlot } from '../../providers/SlotProvider.jsx'
 import { useAllAvailableProducts } from '../../hooks/useProducts.js'
 import { useMortgages } from '../../hooks/useMortgages.js'
+import { useClients } from '../../hooks/useClients.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE } from '../../constants.js'
 import { formatCurrency } from '../../utils.js'
@@ -21,6 +22,9 @@ export default function PropertyMarket() {
   const [mortgageTermYears, setMortgageTermYears] = useState(30)
   const [mortgageDownPayment, setMortgageDownPayment] = useState('')
   const [error, setError] = useState('')
+
+  const clientsQuery = useClients(currentSlot, true)
+  const clients = clientsQuery.data || []
 
   // If we navigated here from a specific client page, carry that selection into context.
   useEffect(() => {
@@ -150,57 +154,75 @@ export default function PropertyMarket() {
             {selectedProperty.rooms} rooms • {selectedProperty.sqft2} sqft
           </p>
           <p className="text-xs mt-2">{selectedProperty.description}</p>
-          {selectedClientId ? (
-            <>
-              <label htmlFor="mortgage-term" className="bw-label mt-2">
-                Term Years
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  id="mortgage-term"
-                  className="bw-range term-slider"
-                  min="5"
-                  max="30"
-                  value={mortgageTermYears}
-                  onChange={(event) => setMortgageTermYears(Number(event.target.value))}
-                />
+
+          <div className="border-t pt-4 mt-4">
+            <label htmlFor="mortgage-client" className="bw-label">
+              Select Client
+            </label>
+            <select
+              id="mortgage-client"
+              className="bw-input mb-2"
+              value={selectedClientId || ''}
+              onChange={(e) => setSelectedClientId(Number(e.target.value))}
+            >
+              <option value="">Choose client</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+
+            {selectedClientId && (
+              <>
+                <label htmlFor="mortgage-term" className="bw-label mt-2">
+                  Term Years
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    id="mortgage-term"
+                    className="bw-range term-slider"
+                    min="5"
+                    max="30"
+                    value={mortgageTermYears}
+                    onChange={(event) => setMortgageTermYears(Number(event.target.value))}
+                  />
+                  <input
+                    type="number"
+                    className="bw-input term-input"
+                    min="5"
+                    max="30"
+                    value={mortgageTermYears}
+                    onChange={(event) => setMortgageTermYears(Number(event.target.value))}
+                  />
+                </div>
+                <label htmlFor="mortgage-down-payment" className="bw-label mt-2">
+                  Down Payment
+                </label>
                 <input
                   type="number"
-                  className="bw-input term-input"
-                  min="5"
-                  max="30"
-                  value={mortgageTermYears}
-                  onChange={(event) => setMortgageTermYears(Number(event.target.value))}
+                  id="mortgage-down-payment"
+                  className="bw-input"
+                  min="0"
+                  step="0.01"
+                  value={mortgageDownPayment}
+                  onChange={(event) => setMortgageDownPayment(event.target.value)}
                 />
-              </div>
-              <label htmlFor="mortgage-down-payment" className="bw-label mt-2">
-                Down Payment
-              </label>
-              <input
-                type="number"
-                id="mortgage-down-payment"
-                className="bw-input"
-                min="0"
-                step="0.01"
-                value={mortgageDownPayment}
-                onChange={(event) => setMortgageDownPayment(event.target.value)}
-              />
-              <p className="text-red-600 text-xs mt-2 text-center">{error}</p>
-              <button
-                className="bw-button w-full mt-2"
-                type="button"
-                disabled={
-                  createMortgageMutation.isPending || appliedPropertyIds.has(String(selectedProperty.id))
-                }
-                onClick={handleApply}
-              >
-                {appliedPropertyIds.has(String(selectedProperty.id)) ? 'Already Applied' : 'Apply for Mortgage'}
-              </button>
-            </>
-          ) : (
-            <p className="text-xs text-red-600 mt-2">Select a client first to apply for a mortgage.</p>
-          )}
+                <p className="text-red-600 text-xs mt-2 text-center">{error}</p>
+                <button
+                  className="bw-button w-full mt-2"
+                  type="button"
+                  disabled={
+                    createMortgageMutation.isPending || appliedPropertyIds.has(String(selectedProperty.id))
+                  }
+                  onClick={handleApply}
+                >
+                  {appliedPropertyIds.has(String(selectedProperty.id)) ? 'Already Applied' : 'Apply for Mortgage'}
+                </button>
+              </>
+            )}
+          </div>
         </Modal>
       )}
     </div>

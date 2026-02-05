@@ -61,7 +61,9 @@ public class JobService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
                                 + "/start to initialize the slot."));
-        cj.setNextPayday(state.getGameDay() + job.getPayCycleDays());
+        // Initialize nextPayday to the start of the NEXT whole game day (month counter
+        // increment).
+        cj.setNextPayday(Math.floor(state.getGameDay()) + 1.0);
         cj.setPrimary(primary);
         cj.setCreatedAt(Instant.now(clock));
         if (primary) {
@@ -80,6 +82,7 @@ public class JobService {
     private void recalculateMonthlyIncome(Client client) {
         List<ClientJob> jobs = clientJobRepository.findByClientId(client.getId());
         BigDecimal totalMonthlyIncome = jobs.stream()
+                .filter(cj -> Boolean.TRUE.equals(cj.getPrimary()))
                 .map(cj -> cj.getJob().getAnnualSalary())
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .divide(BigDecimal.valueOf(SimulationConstants.DAYS_PER_YEAR), 2, java.math.RoundingMode.HALF_UP);

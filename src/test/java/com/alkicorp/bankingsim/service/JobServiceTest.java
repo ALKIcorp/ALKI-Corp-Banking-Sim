@@ -40,6 +40,8 @@ class JobServiceTest {
     @Mock
     private ClientRepository clientRepository;
     @Mock
+    private ClientService clientService;
+    @Mock
     private SimulationService simulationService;
     @Mock
     private CurrentUserService currentUserService;
@@ -72,8 +74,7 @@ class JobServiceTest {
         job.setPayCycleDays(14);
 
         when(currentUserService.getCurrentUser()).thenReturn(user);
-        when(clientRepository.findByIdAndSlotIdAndBankStateUserId(100L, 1, 1L))
-                .thenReturn(Optional.of(client));
+        when(clientService.getClient(1, 100L)).thenReturn(client);
         when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
         when(simulationService.getAndAdvanceState(user, 1)).thenReturn(Optional.of(bankState));
 
@@ -81,6 +82,7 @@ class JobServiceTest {
         ClientJob savedCj = new ClientJob();
         savedCj.setClient(client);
         savedCj.setJob(job);
+        savedCj.setPrimary(true);
         when(clientJobRepository.save(any(ClientJob.class))).thenReturn(savedCj);
 
         // First call: find existing jobs (return empty)
@@ -99,7 +101,7 @@ class JobServiceTest {
     }
 
     @Test
-    void assignJob_SecondJob_SumsIncomeCorrectly() {
+    void assignJob_SecondJob_Primary_ReplacesIncome() {
         Job job1 = new Job();
         job1.setId(1L);
         job1.setAnnualSalary(new BigDecimal("60000")); // 5000/month
@@ -109,34 +111,42 @@ class JobServiceTest {
         job2.setAnnualSalary(new BigDecimal("30000")); // 2500/month
         job2.setPayCycleDays(14);
 
-        // Pre-existing job assignment
+        // Pre-existing job assignment (primary = true)
         ClientJob existingCj = new ClientJob();
         existingCj.setClient(client);
         existingCj.setJob(job1);
+        existingCj.setPrimary(true);
 
-        // Client already has partial income (though logic should recalculate from
-        // scratch)
+        // Client already has partial income
         client.setMonthlyIncomeCache(new BigDecimal("5000.00"));
 
         when(currentUserService.getCurrentUser()).thenReturn(user);
-        when(clientRepository.findByIdAndSlotIdAndBankStateUserId(100L, 1, 1L))
-                .thenReturn(Optional.of(client));
+        when(clientService.getClient(1, 100L)).thenReturn(client);
         when(jobRepository.findById(2L)).thenReturn(Optional.of(job2));
         when(simulationService.getAndAdvanceState(user, 1)).thenReturn(Optional.of(bankState));
 
         ClientJob newCj = new ClientJob();
         newCj.setClient(client);
         newCj.setJob(job2);
+        newCj.setPrimary(true);
 
         when(clientJobRepository.save(any(ClientJob.class))).thenReturn(newCj);
 
-        // Return both jobs for recalculation
-        when(clientJobRepository.findByClientId(100L)).thenReturn(List.of(existingCj, newCj));
+        // First find (for primary check): returns existingCj
+        // Second find (for recalculate): returns both, but existingCj must be
+        // non-primary
+        when(clientJobRepository.findByClientId(100L)).thenAnswer(invocation -> {
+            if (existingCj.getPrimary()) {
+                return List.of(existingCj);
+            } else {
+                return List.of(existingCj, newCj);
+            }
+        });
 
-        jobService.assignJob(1, 100L, 2L, false);
+        jobService.assignJob(1, 100L, 2L, true);
 
-        // Should be 5000 + 2500 = 7500
-        assertEquals(new BigDecimal("7500.00"), client.getMonthlyIncomeCache());
+        // Should be exactly 2500.00 (replaces 5000.00)
+        assertEquals(new BigDecimal("2500.00"), client.getMonthlyIncomeCache());
         verify(clientRepository).save(client);
     }
 }

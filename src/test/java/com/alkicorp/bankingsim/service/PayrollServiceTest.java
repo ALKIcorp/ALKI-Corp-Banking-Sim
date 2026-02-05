@@ -63,10 +63,10 @@ class PayrollServiceTest {
 
         payrollService.runPayroll(1, 10.0);
 
-        // Expected pay: 36500 * 7 / 12 = 21291.666... -> 21291.67
-        // New balance: 1000 + 21291.67 = 22291.67
-        assertEquals(new BigDecimal("22291.67"), client.getCheckingBalance());
-        assertEquals(17.0, clientJob.getNextPayday());
+        // Expected pay: 36500 / 12 = 3041.666... -> 3041.67
+        // New balance: 1000 + 3041.67 = 4041.67
+        assertEquals(new BigDecimal("4041.67"), client.getCheckingBalance());
+        assertEquals(11.0, clientJob.getNextPayday());
 
         verify(clientRepository).save(any(Client.class));
         verify(transactionRepository).save(any(Transaction.class));
