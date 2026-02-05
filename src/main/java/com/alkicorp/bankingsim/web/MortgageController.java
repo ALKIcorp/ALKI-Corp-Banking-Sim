@@ -55,6 +55,14 @@ public class MortgageController {
         return toResponse(mortgageService.updateStatus(slotId, mortgageId, MortgageStatus.REJECTED));
     }
 
+    @PostMapping("/mortgages/recalculate-total-paid")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<MortgageResponse> recalcTotalPaid(@PathVariable int slotId) {
+        return mortgageService.recalcTotalPaid(slotId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     private MortgageResponse toResponse(Mortgage mortgage) {
         return MortgageResponse.builder()
                 .id(mortgage.getId())

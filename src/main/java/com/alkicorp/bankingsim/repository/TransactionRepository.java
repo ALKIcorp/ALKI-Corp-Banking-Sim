@@ -32,6 +32,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("gameMonth") Integer gameMonth,
             @Param("depositTypes") Collection<TransactionType> depositTypes);
 
+    @Query("""
+            select coalesce(sum(t.amount), 0)
+            from Transaction t
+            where t.client.id = :clientId
+              and t.type in :types
+              and t.gameDay >= :startDay
+              and (:endDay is null or t.gameDay < :endDay)
+            """)
+    BigDecimal sumByClientAndTypesAndDayRange(@Param("clientId") Long clientId,
+            @Param("types") Collection<TransactionType> types,
+            @Param("startDay") Integer startDay,
+            @Param("endDay") Integer endDay);
+
     interface MonthlyCashflowProjection {
         BigDecimal getIncome();
         BigDecimal getSpending();

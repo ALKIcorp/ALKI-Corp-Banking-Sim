@@ -19,7 +19,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -89,6 +93,57 @@ public class MortgageService {
         return mortgageRepository.save(mortgage);
     }
 
+    @Transactional
+    public List<Mortgage> recalcTotalPaid(int slotId) {
+        User user = currentUserService.getCurrentUser();
+        if (!user.isAdminStatus()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required.");
+        }
+        List<Mortgage> mortgages = mortgageRepository.findBySlotId(slotId);
+        Map<Long, List<Mortgage>> byClient = new HashMap<>();
+        for (Mortgage mortgage : mortgages) {
+            if (mortgage.getClient() == null || mortgage.getClient().getId() == null) {
+                continue;
+            }
+            byClient.computeIfAbsent(mortgage.getClient().getId(), k -> new ArrayList<>()).add(mortgage);
+        }
+        for (Map.Entry<Long, List<Mortgage>> entry : byClient.entrySet()) {
+            List<Mortgage> clientMortgages = entry.getValue();
+            clientMortgages.sort(Comparator
+                    .comparing(Mortgage::getStartPaymentDay, Comparator.nullsLast(Integer::compareTo))
+                    .thenComparing(Mortgage::getCreatedAt, Comparator.nullsLast(Instant::compareTo)));
+            for (int i = 0; i < clientMortgages.size(); i++) {
+                Mortgage mortgage = clientMortgages.get(i);
+                Integer startDay = mortgage.getStartPaymentDay();
+                if (startDay == null) {
+                    startDay = 0;
+                }
+                Integer endDay = null;
+                if (i + 1 < clientMortgages.size()) {
+                    Integer nextStart = clientMortgages.get(i + 1).getStartPaymentDay();
+                    if (nextStart != null) {
+                        endDay = nextStart;
+                    }
+                }
+                BigDecimal paymentSum = transactionRepository.sumByClientAndTypesAndDayRange(
+                        entry.getKey(),
+                        List.of(TransactionType.MORTGAGE_PAYMENT),
+                        startDay,
+                        endDay);
+                BigDecimal downPayment = mortgage.getDownPayment() == null ? BigDecimal.ZERO : mortgage.getDownPayment();
+                BigDecimal recomputed = downPayment.add(paymentSum).setScale(2, RoundingMode.HALF_UP);
+                if (mortgage.getPropertyPrice() != null
+                        && recomputed.compareTo(mortgage.getPropertyPrice()) > 0) {
+                    recomputed = mortgage.getPropertyPrice().setScale(2, RoundingMode.HALF_UP);
+                }
+                mortgage.setTotalPaid(recomputed);
+                mortgage.setUpdatedAt(Instant.now(clock));
+                mortgageRepository.save(mortgage);
+            }
+        }
+        return mortgageRepository.findBySlotId(slotId);
+    }
+
     @Transactional(readOnly = true)
     public List<Mortgage> listMortgages(int slotId) {
         User user = currentUserService.getCurrentUser();
@@ -129,8 +184,6 @@ public class MortgageService {
                 clientRepository.save(client);
                 recordTransaction(client, state, TransactionType.MORTGAGE_DOWN_PAYMENT, downPayment);
             }
-            BigDecimal paidSoFar = mortgage.getTotalPaid() == null ? BigDecimal.ZERO : mortgage.getTotalPaid();
-            mortgage.setTotalPaid(paidSoFar.add(downPayment));
             product.setStatus(ProductStatus.OWNED);
             product.setOwnerClient(mortgage.getClient());
             productRepository.save(product);
