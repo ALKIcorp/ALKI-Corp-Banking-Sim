@@ -73,6 +73,14 @@ public class MortgageService {
         Instant now = Instant.now(clock);
         mortgage.setCreatedAt(now);
         mortgage.setUpdatedAt(now);
+        mortgage.setMissedPayments(0);
+        mortgage.setLastPaymentStatus(null);
+        mortgage.setRepossessionFlag(false);
+        mortgage.setWrittenOff(false);
+        mortgage.setNextPaymentDay(null);
+        mortgage.setMonthlyPayment(null);
+        mortgage.setAprSnapshot(null);
+        mortgage.setLtvAtOrigination(null);
         return mortgageRepository.save(mortgage);
     }
 
@@ -103,13 +111,13 @@ public class MortgageService {
             }
             Client client = mortgage.getClient();
             BigDecimal downPayment = mortgage.getDownPayment();
+            BankState state = simulationService.getAndAdvanceState(user, slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
             if (downPayment.compareTo(BigDecimal.ZERO) > 0) {
                 if (downPayment.compareTo(client.getCheckingBalance()) > 0) {
                     throw new ValidationException("Not enough funds to purchase property.");
                 }
-                BankState state = simulationService.getAndAdvanceState(user, slotId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
                 client.setCheckingBalance(client.getCheckingBalance().subtract(downPayment));
                 clientRepository.save(client);
                 recordTransaction(client, state, TransactionType.MORTGAGE_DOWN_PAYMENT, downPayment);
@@ -117,6 +125,15 @@ public class MortgageService {
             product.setStatus(ProductStatus.OWNED);
             product.setOwnerClient(mortgage.getClient());
             productRepository.save(product);
+            // compute simple monthly payment if missing
+            if (mortgage.getMonthlyPayment() == null) {
+                int months = mortgage.getTermYears() * 12;
+                BigDecimal monthlyPayment = months > 0
+                    ? mortgage.getLoanAmount().divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP)
+                    : mortgage.getLoanAmount();
+                mortgage.setMonthlyPayment(monthlyPayment);
+                mortgage.setNextPaymentDay((int) Math.floor(state.getGameDay()) + 30);
+            }
         }
         mortgage.setStatus(status);
         mortgage.setUpdatedAt(Instant.now(clock));

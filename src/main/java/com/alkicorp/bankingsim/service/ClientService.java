@@ -50,6 +50,15 @@ public class ClientService {
         client.setName(name.trim());
         client.setCheckingBalance(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         client.setDailyWithdrawn(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+        client.setSavingsBalance(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+        client.setMonthlyIncomeCache(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+        client.setMonthlyMandatoryCache(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+        client.setMonthlyDiscretionaryTarget(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+        client.setEmploymentStatus("ACTIVE");
+        client.setBankrupt(false);
+        client.setBankruptUntil(null);
+        client.setMissedPaymentStreak(0);
+        client.setPurchasingBlockReason(null);
         DebitCard card = generateDebitCard();
         client.setCardNumber(card.number());
         client.setCardExpiry(card.expiry());

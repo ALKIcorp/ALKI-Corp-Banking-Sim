@@ -53,4 +53,31 @@ public class Client {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    @Column(name = "savings_balance", nullable = false, precision = 19, scale = 2)
+    private BigDecimal savingsBalance;
+
+    @Column(name = "monthly_income_cache", precision = 19, scale = 2)
+    private BigDecimal monthlyIncomeCache;
+
+    @Column(name = "monthly_mandatory_cache", precision = 19, scale = 2)
+    private BigDecimal monthlyMandatoryCache;
+
+    @Column(name = "monthly_discretionary_target", precision = 19, scale = 2)
+    private BigDecimal monthlyDiscretionaryTarget;
+
+    @Column(name = "employment_status", nullable = false, length = 40)
+    private String employmentStatus;
+
+    @Column(name = "is_bankrupt", nullable = false)
+    private Boolean bankrupt;
+
+    @Column(name = "bankrupt_until")
+    private Double bankruptUntil;
+
+    @Column(name = "missed_payment_streak", nullable = false)
+    private Integer missedPaymentStreak;
+
+    @Column(name = "purchasing_block_reason", length = 160)
+    private String purchasingBlockReason;
 }

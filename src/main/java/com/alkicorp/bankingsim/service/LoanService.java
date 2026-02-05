@@ -2,10 +2,12 @@ package com.alkicorp.bankingsim.service;
 
 import com.alkicorp.bankingsim.auth.model.User;
 import com.alkicorp.bankingsim.auth.service.CurrentUserService;
+import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.Loan;
 import com.alkicorp.bankingsim.model.enums.LoanStatus;
 import com.alkicorp.bankingsim.model.enums.TransactionType;
+import com.alkicorp.bankingsim.service.SimulationService;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.LoanRepository;
 import jakarta.validation.ValidationException;
@@ -27,6 +29,7 @@ public class LoanService {
     private final ClientRepository clientRepository;
     private final ClientService clientService;
     private final CurrentUserService currentUserService;
+    private final SimulationService simulationService;
     private final Clock clock = Clock.systemUTC();
 
     @Transactional
@@ -47,6 +50,14 @@ public class LoanService {
         Instant now = Instant.now(clock);
         loan.setCreatedAt(now);
         loan.setUpdatedAt(now);
+        loan.setMissedPayments(0);
+        loan.setLastPaymentStatus(null);
+        loan.setRepossessionFlag(false);
+        loan.setWrittenOff(false);
+        loan.setNextPaymentDay(null);
+        loan.setMonthlyPayment(null);
+        loan.setAprSnapshot(null);
+        loan.setDtiAtOrigination(null);
         return loanRepository.save(loan);
     }
 
@@ -72,6 +83,14 @@ public class LoanService {
         }
         if (status == LoanStatus.APPROVED) {
             clientService.creditAccount(slotId, loan.getClient().getId(), loan.getAmount(), TransactionType.LOAN_DISBURSEMENT, false);
+            // set payment schedule defaults: monthly over term years, simple amortization
+            int months = loan.getTermYears() * 12;
+            BigDecimal monthlyPayment = months > 0
+                ? loan.getAmount().divide(BigDecimal.valueOf(months), 2, java.math.RoundingMode.HALF_UP)
+                : loan.getAmount();
+            loan.setMonthlyPayment(monthlyPayment);
+            loan.setNextPaymentDay((int) Math.floor(simulationService.getAndAdvanceState(user, slotId)
+                .map(BankState::getGameDay).orElse(0d)) + 30);
         }
         loan.setStatus(status);
         loan.setUpdatedAt(Instant.now(clock));

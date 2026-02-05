@@ -9,6 +9,10 @@ import com.alkicorp.bankingsim.repository.BankStateRepository;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.InvestmentEventRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
+import com.alkicorp.bankingsim.service.BankruptcyService;
+import com.alkicorp.bankingsim.service.PayrollService;
+import com.alkicorp.bankingsim.service.RentService;
+import com.alkicorp.bankingsim.service.SpendingService;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -35,6 +39,10 @@ public class SimulationService {
     private final ClientRepository clientRepository;
     private final TransactionRepository transactionRepository;
     private final InvestmentEventRepository investmentEventRepository;
+    private final PayrollService payrollService;
+    private final RentService rentService;
+    private final SpendingService spendingService;
+    private final BankruptcyService bankruptcyService;
     private final Clock clock = Clock.systemUTC();
 
     @Transactional
@@ -174,6 +182,12 @@ public class SimulationService {
             if (clientUpdated) {
                 clientRepository.saveAll(clients);
             }
+            // run periodic simulations aligned with game days
+            payrollService.runPayroll(state.getSlotId(), newDayValue);
+            rentService.chargeRent(state.getSlotId(), newDayValue);
+            // spending per client can be heavy; keep lightweight call here
+            clients.forEach(c -> spendingService.generateSpending(state.getSlotId(), c.getId()));
+            bankruptcyService.checkDischarge(state.getSlotId());
         }
         return bankStateRepository.save(state);
     }

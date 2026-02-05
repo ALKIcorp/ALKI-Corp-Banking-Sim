@@ -29,17 +29,17 @@ databaseChangeLog:
                     unique: true
               - column:
                   name: liquid_cash
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
                   name: invested_sp500
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
                   name: sp500_price
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
@@ -100,12 +100,12 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: checking_balance
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
                   name: daily_withdrawn
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
@@ -173,7 +173,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: amount
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
@@ -236,7 +236,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: amount
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
@@ -647,7 +647,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: price
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
@@ -744,7 +744,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: amount
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
@@ -754,7 +754,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: interest_rate
-                  type: DECIMAL(6,4)
+                  type: "DECIMAL(6,4)"
                   constraints:
                     nullable: false
               - column:
@@ -835,17 +835,17 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: property_price
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
                   name: down_payment
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
                   name: loan_amount
-                  type: DECIMAL(19,2)
+                  type: "DECIMAL(19,2)"
                   constraints:
                     nullable: false
               - column:
@@ -855,7 +855,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: interest_rate
-                  type: DECIMAL(6,4)
+                  type: "DECIMAL(6,4)"
                   constraints:
                     nullable: false
               - column:
@@ -918,7 +918,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: mortgage_rate
-                  type: DECIMAL(6,4)
+                  type: "DECIMAL(6,4)"
                   defaultValueNumeric: 0
                   constraints:
                     nullable: false
@@ -939,3 +939,513 @@ databaseChangeLog:
             tableName: client_transaction
             columnName: type
             newDataType: VARCHAR(40)
+
+  # === Market-Aware Simulator v5 additions ===
+  - changeSet:
+      id: 21-create-jobs
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: jobs
+      changes:
+        - createTable:
+            tableName: jobs
+            columns:
+              - column: {name: id, type: BIGINT, autoIncrement: true, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: title, type: VARCHAR(120), constraints: {nullable: false}}
+              - column: {name: employer, type: VARCHAR(120), constraints: {nullable: false}}
+              - column: {name: annual_salary, type: "DECIMAL(19,2)", constraints: {nullable: false}}
+              - column: {name: pay_cycle_days, type: INT, constraints: {nullable: false}}
+              - column: {name: spending_profile, type: JSONB, constraints: {nullable: true}}
+              - column: {name: created_at, type: TIMESTAMP, constraints: {nullable: false}}
+        - createIndex:
+            tableName: jobs
+            indexName: idx_jobs_title
+            columns:
+              - column: {name: title}
+
+  - changeSet:
+      id: 22-create-client-jobs
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: client_jobs
+      changes:
+        - createTable:
+            tableName: client_jobs
+            columns:
+              - column: {name: id, type: BIGINT, autoIncrement: true, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: client_id, type: BIGINT, constraints: {nullable: false}}
+              - column: {name: slot_id, type: INT, constraints: {nullable: false}}
+              - column: {name: job_id, type: BIGINT, constraints: {nullable: false}}
+              - column: {name: start_date, type: TIMESTAMP, constraints: {nullable: false}}
+              - column: {name: next_payday, type: DOUBLE PRECISION, constraints: {nullable: false}}
+              - column: {name: is_primary, type: BOOLEAN, defaultValueBoolean: true, constraints: {nullable: false}}
+              - column: {name: created_at, type: TIMESTAMP, constraints: {nullable: false}}
+        - addForeignKeyConstraint:
+            baseTableName: client_jobs
+            baseColumnNames: client_id
+            constraintName: fk_client_jobs_client
+            referencedTableName: client
+            referencedColumnNames: id
+        - addForeignKeyConstraint:
+            baseTableName: client_jobs
+            baseColumnNames: job_id
+            constraintName: fk_client_jobs_job
+            referencedTableName: jobs
+            referencedColumnNames: id
+        - createIndex:
+            tableName: client_jobs
+            indexName: idx_client_jobs_slot_client
+            columns:
+              - column: {name: slot_id}
+              - column: {name: client_id}
+
+  - changeSet:
+      id: 23-create-rentals
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: rentals
+      changes:
+        - createTable:
+            tableName: rentals
+            columns:
+              - column: {name: id, type: BIGINT, autoIncrement: true, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: name, type: VARCHAR(160), constraints: {nullable: false}}
+              - column: {name: monthly_rent, type: "DECIMAL(19,2)", constraints: {nullable: false}}
+              - column: {name: bedrooms, type: INT, constraints: {nullable: false}}
+              - column: {name: sqft, type: INT, constraints: {nullable: false}}
+              - column: {name: location, type: VARCHAR(160), constraints: {nullable: false}}
+              - column: {name: image_url, type: VARCHAR(400)}
+              - column: {name: status, type: VARCHAR(40), constraints: {nullable: false}}
+              - column: {name: created_at, type: TIMESTAMP, constraints: {nullable: false}}
+
+  - changeSet:
+      id: 24-create-client-living
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: client_living
+      changes:
+        - createTable:
+            tableName: client_living
+            columns:
+              - column: {name: id, type: BIGINT, autoIncrement: true, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: client_id, type: BIGINT, constraints: {nullable: false}}
+              - column: {name: slot_id, type: INT, constraints: {nullable: false}}
+              - column: {name: living_type, type: VARCHAR(40), constraints: {nullable: false}}
+              - column: {name: property_id, type: BIGINT}
+              - column: {name: rental_id, type: BIGINT}
+              - column: {name: start_date, type: TIMESTAMP, constraints: {nullable: false}}
+              - column: {name: next_rent_day, type: INT, constraints: {nullable: false}}
+              - column: {name: monthly_rent_cache, type: "DECIMAL(19,2)"}
+              - column: {name: delinquent, type: BOOLEAN, defaultValueBoolean: false, constraints: {nullable: false}}
+        - addForeignKeyConstraint:
+            baseTableName: client_living
+            baseColumnNames: client_id
+            constraintName: fk_client_living_client
+            referencedTableName: client
+            referencedColumnNames: id
+        - addForeignKeyConstraint:
+            baseTableName: client_living
+            baseColumnNames: rental_id
+            constraintName: fk_client_living_rental
+            referencedTableName: rentals
+            referencedColumnNames: id
+        - addForeignKeyConstraint:
+            baseTableName: client_living
+            baseColumnNames: property_id
+            constraintName: fk_client_living_property
+            referencedTableName: products
+            referencedColumnNames: id
+        - createIndex:
+            tableName: client_living
+            indexName: idx_client_living_slot_client
+            columns:
+              - column: {name: slot_id}
+              - column: {name: client_id}
+
+  - changeSet:
+      id: 25-create-spending-categories
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: spending_categories
+      changes:
+        - createTable:
+            tableName: spending_categories
+            columns:
+              - column: {name: id, type: BIGINT, autoIncrement: true, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: name, type: VARCHAR(120), constraints: {nullable: false}}
+              - column: {name: min_pct_income, type: "DECIMAL(5,4)", constraints: {nullable: false}}
+              - column: {name: max_pct_income, type: "DECIMAL(5,4)", constraints: {nullable: false}}
+              - column: {name: variability, type: "DECIMAL(5,4)", constraints: {nullable: false}}
+              - column: {name: is_mandatory, type: BOOLEAN, defaultValueBoolean: false, constraints: {nullable: false}}
+              - column: {name: default_active, type: BOOLEAN, defaultValueBoolean: true, constraints: {nullable: false}}
+              - column: {name: created_at, type: TIMESTAMP, constraints: {nullable: false}}
+
+  - changeSet:
+      id: 26-extend-client-for-financials
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        tableExists:
+          tableName: client
+      changes:
+        - addColumn:
+            tableName: client
+            columns:
+              - column: {name: savings_balance, type: "DECIMAL(19,2)", defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: monthly_income_cache, type: "DECIMAL(19,2)"}
+              - column: {name: monthly_mandatory_cache, type: "DECIMAL(19,2)"}
+              - column: {name: monthly_discretionary_target, type: "DECIMAL(19,2)"}
+              - column: {name: employment_status, type: VARCHAR(40), defaultValue: 'ACTIVE', constraints: {nullable: false}}
+              - column: {name: is_bankrupt, type: BOOLEAN, defaultValueBoolean: false, constraints: {nullable: false}}
+              - column: {name: bankrupt_until, type: DOUBLE PRECISION}
+              - column: {name: missed_payment_streak, type: INT, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: purchasing_block_reason, type: VARCHAR(160)}
+
+  - changeSet:
+      id: 27-create-bankruptcy-applications
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: bankruptcy_applications
+      changes:
+        - createTable:
+            tableName: bankruptcy_applications
+            columns:
+              - column: {name: id, type: BIGINT, autoIncrement: true, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: slot_id, type: INT, constraints: {nullable: false}}
+              - column: {name: client_id, type: BIGINT, constraints: {nullable: false}}
+              - column: {name: status, type: VARCHAR(40), constraints: {nullable: false}}
+              - column: {name: filed_at, type: TIMESTAMP, constraints: {nullable: false}}
+              - column: {name: decided_at, type: TIMESTAMP}
+              - column: {name: discharge_at, type: DOUBLE PRECISION}
+              - column: {name: notes, type: TEXT}
+        - addForeignKeyConstraint:
+            baseTableName: bankruptcy_applications
+            baseColumnNames: client_id
+            constraintName: fk_bankruptcy_client
+            referencedTableName: client
+            referencedColumnNames: id
+        - createIndex:
+            tableName: bankruptcy_applications
+            indexName: idx_bankruptcy_slot_client
+            columns:
+              - column: {name: slot_id}
+              - column: {name: client_id}
+
+  - changeSet:
+      id: 28-extend-loans-and-mortgages
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+      changes:
+        - addColumn:
+            tableName: loans
+            columns:
+              - column: {name: missed_payments, type: INT, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: last_payment_status, type: VARCHAR(40)}
+              - column: {name: repossession_flag, type: BOOLEAN, defaultValueBoolean: false, constraints: {nullable: false}}
+              - column: {name: written_off, type: BOOLEAN, defaultValueBoolean: false, constraints: {nullable: false}}
+              - column: {name: next_payment_day, type: INT}
+              - column: {name: monthly_payment, type: "DECIMAL(19,2)"}
+              - column: {name: apr_snapshot, type: "DECIMAL(6,4)"}
+              - column: {name: dti_at_origination, type: "DECIMAL(5,4)"}
+        - addColumn:
+            tableName: mortgages
+            columns:
+              - column: {name: missed_payments, type: INT, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: last_payment_status, type: VARCHAR(40)}
+              - column: {name: repossession_flag, type: BOOLEAN, defaultValueBoolean: false, constraints: {nullable: false}}
+              - column: {name: written_off, type: BOOLEAN, defaultValueBoolean: false, constraints: {nullable: false}}
+              - column: {name: next_payment_day, type: INT}
+              - column: {name: monthly_payment, type: "DECIMAL(19,2)"}
+              - column: {name: apr_snapshot, type: "DECIMAL(6,4)"}
+              - column: {name: ltv_at_origination, type: "DECIMAL(5,4)"}
+
+  - changeSet:
+      id: 29-create-repossession-event
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        not:
+          - tableExists:
+              tableName: repossession_event
+      changes:
+        - createTable:
+            tableName: repossession_event
+            columns:
+              - column: {name: id, type: BIGINT, autoIncrement: true, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: client_id, type: BIGINT, constraints: {nullable: false}}
+              - column: {name: slot_id, type: INT, constraints: {nullable: false}}
+              - column: {name: asset_type, type: VARCHAR(40), constraints: {nullable: false}}
+              - column: {name: asset_id, type: BIGINT, constraints: {nullable: false}}
+              - column: {name: reason, type: VARCHAR(40), constraints: {nullable: false}}
+              - column: {name: game_day, type: INT, constraints: {nullable: false}}
+              - column: {name: balance_written_off, type: "DECIMAL(19,2)"}
+              - column: {name: created_at, type: TIMESTAMP, constraints: {nullable: false}}
+        - addForeignKeyConstraint:
+            baseTableName: repossession_event
+            baseColumnNames: client_id
+            constraintName: fk_repossession_client
+            referencedTableName: client
+            referencedColumnNames: id
+        - createIndex:
+            tableName: repossession_event
+            indexName: idx_repossession_slot_client
+            columns:
+              - column: {name: slot_id}
+              - column: {name: client_id}
+
+  - changeSet:
+      id: 30-seed-jobs
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists: {tableName: jobs}
+      changes:
+        - insert:
+            tableName: jobs
+            columns:
+              - column: {name: title, value: "Software Engineer"}
+              - column: {name: employer, value: "Techify"}
+              - column: {name: annual_salary, valueNumeric: 120000}
+              - column: {name: pay_cycle_days, valueNumeric: 14}
+              - column: {name: spending_profile, value: '{"savings":0.10,"discretionary":0.25,"mandatory":0.40}'}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: jobs
+            columns:
+              - column: {name: title, value: "Registered Nurse"}
+              - column: {name: employer, value: "City Hospital"}
+              - column: {name: annual_salary, valueNumeric: 85000}
+              - column: {name: pay_cycle_days, valueNumeric: 14}
+              - column: {name: spending_profile, value: '{"savings":0.08,"discretionary":0.22,"mandatory":0.45}'}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: jobs
+            columns:
+              - column: {name: title, value: "Teacher"}
+              - column: {name: employer, value: "Public School"}
+              - column: {name: annual_salary, valueNumeric: 60000}
+              - column: {name: pay_cycle_days, valueNumeric: 14}
+              - column: {name: spending_profile, value: '{"savings":0.05,"discretionary":0.20,"mandatory":0.50}'}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: jobs
+            columns:
+              - column: {name: title, value: "Delivery Driver"}
+              - column: {name: employer, value: "QuickShip"}
+              - column: {name: annual_salary, valueNumeric: 50000}
+              - column: {name: pay_cycle_days, valueNumeric: 14}
+              - column: {name: spending_profile, value: '{"savings":0.04,"discretionary":0.18,"mandatory":0.52}'}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: jobs
+            columns:
+              - column: {name: title, value: "Retail Associate"}
+              - column: {name: employer, value: "ShopMore"}
+              - column: {name: annual_salary, valueNumeric: 38000}
+              - column: {name: pay_cycle_days, valueNumeric: 14}
+              - column: {name: spending_profile, value: '{"savings":0.02,"discretionary":0.15,"mandatory":0.55}'}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+
+  - changeSet:
+      id: 31-seed-rentals
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists: {tableName: rentals}
+      changes:
+        - insert:
+            tableName: rentals
+            columns:
+              - column: {name: name, value: "Downtown Studio"}
+              - column: {name: monthly_rent, valueNumeric: 900}
+              - column: {name: bedrooms, valueNumeric: 0}
+              - column: {name: sqft, valueNumeric: 450}
+              - column: {name: location, value: "Downtown"}
+              - column: {name: status, value: "ACTIVE"}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: rentals
+            columns:
+              - column: {name: name, value: "Suburban 1BR"}
+              - column: {name: monthly_rent, valueNumeric: 1200}
+              - column: {name: bedrooms, valueNumeric: 1}
+              - column: {name: sqft, valueNumeric: 650}
+              - column: {name: location, value: "Suburbs"}
+              - column: {name: status, value: "ACTIVE"}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: rentals
+            columns:
+              - column: {name: name, value: "City 2BR"}
+              - column: {name: monthly_rent, valueNumeric: 1800}
+              - column: {name: bedrooms, valueNumeric: 2}
+              - column: {name: sqft, valueNumeric: 950}
+              - column: {name: location, value: "City"}
+              - column: {name: status, value: "ACTIVE"}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: rentals
+            columns:
+              - column: {name: name, value: "Luxury Highrise"}
+              - column: {name: monthly_rent, valueNumeric: 2500}
+              - column: {name: bedrooms, valueNumeric: 2}
+              - column: {name: sqft, valueNumeric: 1100}
+              - column: {name: location, value: "Downtown"}
+              - column: {name: status, value: "ACTIVE"}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: rentals
+            columns:
+              - column: {name: name, value: "Family 3BR"}
+              - column: {name: monthly_rent, valueNumeric: 2100}
+              - column: {name: bedrooms, valueNumeric: 3}
+              - column: {name: sqft, valueNumeric: 1400}
+              - column: {name: location, value: "Suburbs"}
+              - column: {name: status, value: "ACTIVE"}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: rentals
+            columns:
+              - column: {name: name, value: "Budget Roomshare"}
+              - column: {name: monthly_rent, valueNumeric: 650}
+              - column: {name: bedrooms, valueNumeric: 1}
+              - column: {name: sqft, valueNumeric: 300}
+              - column: {name: location, value: "City Edge"}
+              - column: {name: status, value: "ACTIVE"}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+
+  - changeSet:
+      id: 32-seed-spending-categories
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists: {tableName: spending_categories}
+      changes:
+        - insert:
+            tableName: spending_categories
+            columns:
+              - column: {name: name, value: "Groceries"}
+              - column: {name: min_pct_income, valueNumeric: 0.08}
+              - column: {name: max_pct_income, valueNumeric: 0.15}
+              - column: {name: variability, valueNumeric: 0.10}
+              - column: {name: is_mandatory, valueBoolean: true}
+              - column: {name: default_active, valueBoolean: true}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: spending_categories
+            columns:
+              - column: {name: name, value: "Utilities"}
+              - column: {name: min_pct_income, valueNumeric: 0.04}
+              - column: {name: max_pct_income, valueNumeric: 0.08}
+              - column: {name: variability, valueNumeric: 0.05}
+              - column: {name: is_mandatory, valueBoolean: true}
+              - column: {name: default_active, valueBoolean: true}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: spending_categories
+            columns:
+              - column: {name: name, value: "Transportation"}
+              - column: {name: min_pct_income, valueNumeric: 0.03}
+              - column: {name: max_pct_income, valueNumeric: 0.10}
+              - column: {name: variability, valueNumeric: 0.12}
+              - column: {name: is_mandatory, valueBoolean: false}
+              - column: {name: default_active, valueBoolean: true}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: spending_categories
+            columns:
+              - column: {name: name, value: "Healthcare"}
+              - column: {name: min_pct_income, valueNumeric: 0.02}
+              - column: {name: max_pct_income, valueNumeric: 0.06}
+              - column: {name: variability, valueNumeric: 0.08}
+              - column: {name: is_mandatory, valueBoolean: true}
+              - column: {name: default_active, valueBoolean: true}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: spending_categories
+            columns:
+              - column: {name: name, value: "Entertainment"}
+              - column: {name: min_pct_income, valueNumeric: 0.01}
+              - column: {name: max_pct_income, valueNumeric: 0.08}
+              - column: {name: variability, valueNumeric: 0.20}
+              - column: {name: is_mandatory, valueBoolean: false}
+              - column: {name: default_active, valueBoolean: true}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+        - insert:
+            tableName: spending_categories
+            columns:
+              - column: {name: name, value: "Shopping"}
+              - column: {name: min_pct_income, valueNumeric: 0.01}
+              - column: {name: max_pct_income, valueNumeric: 0.10}
+              - column: {name: variability, valueNumeric: 0.25}
+              - column: {name: is_mandatory, valueBoolean: false}
+              - column: {name: default_active, valueBoolean: true}
+              - column: {name: created_at, valueDate: CURRENT_TIMESTAMP}
+
+  - changeSet:
+      id: 33-add-created-by-user-to-jobs
+      author: codex
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: jobs
+          - not:
+              - columnExists:
+                  tableName: jobs
+                  columnName: created_by_user_id
+      changes:
+        - addColumn:
+            tableName: jobs
+            columns:
+              - column:
+                  name: created_by_user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+        - addForeignKeyConstraint:
+            baseTableName: jobs
+            baseColumnNames: created_by_user_id
+            constraintName: fk_jobs_created_by_user
+            referencedTableName: users
+            referencedColumnNames: id
+        - createIndex:
+            tableName: jobs
+            indexName: idx_jobs_created_by_user
+            columns:
+              - column: {name: created_by_user_id}
