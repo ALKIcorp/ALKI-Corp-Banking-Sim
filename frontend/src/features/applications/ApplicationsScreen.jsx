@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Panel from '../../components/Panel.jsx'
 import { useSlot } from '../../providers/SlotProvider.jsx'
@@ -24,13 +24,19 @@ function calculateMonthlyPayment({ principal, termYears, interestRate }) {
 }
 
 export default function ApplicationsScreen() {
-  const { currentSlot } = useSlot()
+  const { currentSlot, selectedClientId, setSelectedClientId } = useSlot()
   const { adminStatus } = useAuth()
   const queryClient = useQueryClient()
 
+  const [loanClientId, setLoanClientId] = useState(selectedClientId ? String(selectedClientId) : '')
+  const [loanAmount, setLoanAmount] = useState('')
+  const [loanTermYears, setLoanTermYears] = useState(12)
+  const [loanError, setLoanError] = useState('')
+  const [loanSuccess, setLoanSuccess] = useState('')
+
   const loansQuery = useLoans(currentSlot, true)
   const mortgagesQuery = useMortgages(currentSlot, true)
-  const clientsQuery = useClients(currentSlot, false)
+  const clientsQuery = useClients(currentSlot, true)
   const productsQuery = useProducts(currentSlot, false)
   const adminProductsQuery = useAdminProducts(currentSlot, adminStatus)
 
@@ -75,6 +81,7 @@ export default function ApplicationsScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
     },
   })
 
@@ -86,10 +93,128 @@ export default function ApplicationsScreen() {
     },
   })
 
+  const createLoanMutation = useMutation({
+    mutationFn: ({ slotId, clientId, amount, termYears }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${clientId}/loans`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, termYears }),
+      }),
+    onSuccess: (_, variables) => {
+      setLoanAmount('')
+      setLoanTermYears(12)
+      setLoanError('')
+      setLoanSuccess('Application submitted!')
+      setSelectedClientId(variables.clientId)
+      queryClient.invalidateQueries({ queryKey: ['loans', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['clients', currentSlot] })
+    },
+    onError: (err) => {
+      setLoanSuccess('')
+      setLoanError(err.message)
+    },
+  })
+
+  useEffect(() => {
+    if (selectedClientId) {
+      setLoanClientId(String(selectedClientId))
+    }
+  }, [selectedClientId])
+
+  const handleCreateLoan = () => {
+    if (!currentSlot) return
+    const clientId = Number(loanClientId)
+    const amount = Number(loanAmount)
+    const term = Number(loanTermYears)
+
+    if (!clientId) {
+      setLoanError('Select a client to apply for a loan.')
+      return
+    }
+    if (!amount || amount <= 0) {
+      setLoanError('Enter a positive loan amount.')
+      return
+    }
+    if (!term || term < 5 || term > 30) {
+      setLoanError('Term must be between 5 and 30 years.')
+      return
+    }
+
+    setLoanError('')
+    setLoanSuccess('')
+    createLoanMutation.mutate({ slotId: currentSlot, clientId, amount, termYears: term })
+  }
+
   return (
     <div id="products-view-screen" className="screen active">
       <Panel>
         <h2 className="bw-header">Applications</h2>
+
+        <div className="product-admin-section">
+          <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
+            <span className="header-icon">📝</span> New Loan Application
+          </h3>
+          <div className="grid grid-cols-3 gap-2 items-end">
+            <div className="flex flex-col gap-1">
+              <label className="bw-label" htmlFor="loan-client">
+                Select Client
+              </label>
+              <select
+                id="loan-client"
+                className="bw-input"
+                value={loanClientId}
+                onChange={(e) => setLoanClientId(e.target.value)}
+              >
+                <option value="">Choose client</option>
+                {[...clients]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="bw-label" htmlFor="loan-amount">
+                Amount
+              </label>
+              <input
+                id="loan-amount"
+                type="number"
+                className="bw-input"
+                min="0"
+                step="0.01"
+                value={loanAmount}
+                onChange={(e) => setLoanAmount(e.target.value)}
+                placeholder="5000"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="bw-label" htmlFor="loan-term">
+                Term (years)
+              </label>
+              <input
+                id="loan-term"
+                type="number"
+                className="bw-input"
+                min="5"
+                max="30"
+                value={loanTermYears}
+                onChange={(e) => setLoanTermYears(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-2 items-center">
+            <button className="bw-button" onClick={handleCreateLoan} disabled={createLoanMutation.isPending}>
+              Submit Application
+            </button>
+            {loanSuccess && <span className="text-green-600 text-xs">{loanSuccess}</span>}
+            {loanError && <span className="text-red-600 text-xs">{loanError}</span>}
+          </div>
+        </div>
+
         <div className="product-admin-section">
           <h3 className="text-sm font-semibold mb-2 uppercase flex items-center gap-2">
             <span className="header-icon">📄</span> Loan Applications

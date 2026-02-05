@@ -65,6 +65,7 @@ export default function AdminProductsScreen() {
       resetProductForm()
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot, 'admin'] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
     },
     onError: (err) => setProductError(err.message),
   })
@@ -79,6 +80,7 @@ export default function AdminProductsScreen() {
       resetProductForm()
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot, 'admin'] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
     },
     onError: (err) => setProductError(err.message),
   })
@@ -89,6 +91,7 @@ export default function AdminProductsScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot, 'admin'] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
     },
     onError: (err) => setProductError(err.message),
   })

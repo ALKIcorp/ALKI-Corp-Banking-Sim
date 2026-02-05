@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Panel from '../../components/Panel.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useSlot } from '../../providers/SlotProvider.jsx'
-import { useProducts } from '../../hooks/useProducts.js'
+import { useAllAvailableProducts } from '../../hooks/useProducts.js'
 import { useMortgages } from '../../hooks/useMortgages.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE } from '../../constants.js'
@@ -13,7 +13,7 @@ import PropertyImage from '../../components/PropertyImage.jsx'
 export default function PropertyMarket() {
   const { currentSlot, selectedClientId } = useSlot()
   const queryClient = useQueryClient()
-  const productsQuery = useProducts(currentSlot, true)
+  const productsQuery = useAllAvailableProducts(true)
   const mortgagesQuery = useMortgages(currentSlot, true)
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [mortgageTermYears, setMortgageTermYears] = useState(30)
@@ -43,12 +43,21 @@ export default function PropertyMarket() {
       setError('')
       queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
     },
     onError: (err) => setError(err.message),
   })
 
   const handleApply = () => {
-    if (!currentSlot || !selectedClientId || !selectedProperty) return
+    if (!selectedProperty) return
+    if (!currentSlot || !selectedClientId) {
+      setError('Select a slot and a client to apply for a mortgage.')
+      return
+    }
+    if (selectedProperty.slotId !== currentSlot) {
+      setError(`Switch to slot ${selectedProperty.slotId} to apply for this property.`)
+      return
+    }
     const downPayment = Number(mortgageDownPayment || 0)
     if (downPayment < 0) {
       setError('Down payment cannot be negative.')
@@ -82,6 +91,7 @@ export default function PropertyMarket() {
               <div className="property-body">
                 <div className="property-title">{property.name}</div>
                 <div className="property-description">{property.description}</div>
+                <div className="property-meta">Slot {property.slotId}</div>
                 <div className="property-price">${formatCurrency(property.price)}</div>
                 <button
                   className="bw-button w-full mt-2"
@@ -110,6 +120,7 @@ export default function PropertyMarket() {
         >
           <PropertyImage src={selectedProperty.imageUrl} alt={`${selectedProperty.name} photo`} variant="modal" />
           <p className="text-sm font-semibold mt-2">${formatCurrency(selectedProperty.price)}</p>
+          <p className="text-xs text-gray-500">Slot {selectedProperty.slotId}</p>
           <p className="text-xs text-gray-600">
             {selectedProperty.rooms} rooms • {selectedProperty.sqft2} sqft
           </p>
@@ -154,10 +165,18 @@ export default function PropertyMarket() {
               <button
                 className="bw-button w-full mt-2"
                 type="button"
-                disabled={createMortgageMutation.isPending || appliedPropertyIds.has(String(selectedProperty.id))}
+                disabled={
+                  createMortgageMutation.isPending ||
+                  appliedPropertyIds.has(String(selectedProperty.id)) ||
+                  (currentSlot && selectedProperty.slotId !== currentSlot)
+                }
                 onClick={handleApply}
               >
-                {appliedPropertyIds.has(String(selectedProperty.id)) ? 'Already Applied' : 'Apply for Mortgage'}
+                {appliedPropertyIds.has(String(selectedProperty.id))
+                  ? 'Already Applied'
+                  : currentSlot && selectedProperty.slotId !== currentSlot
+                    ? `Switch to slot ${selectedProperty.slotId}`
+                    : 'Apply for Mortgage'}
               </button>
             </>
           ) : (

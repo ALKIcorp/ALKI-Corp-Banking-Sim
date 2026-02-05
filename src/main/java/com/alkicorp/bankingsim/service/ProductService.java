@@ -88,6 +88,11 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public List<Product> listAvailableAcrossSlots() {
+        return productRepository.findByStatus(ProductStatus.AVAILABLE);
+    }
+
+    @Transactional(readOnly = true)
     public List<Product> listAll(int slotId) {
         User user = currentUserService.getCurrentUser();
         return productRepository.findBySlotIdAndCreatedById(slotId, user.getId());

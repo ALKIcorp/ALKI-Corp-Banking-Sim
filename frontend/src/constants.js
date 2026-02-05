@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
 }
 
 export const API_BASE = '/api/slots'
+export const PUBLIC_PRODUCTS_API = '/api/products'
 export const POLL_INTERVAL_MS = 5000
 export const DAILY_WITHDRAWAL_LIMIT = 500
 export const DAYS_PER_YEAR = 12

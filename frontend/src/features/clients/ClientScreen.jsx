@@ -12,7 +12,7 @@ import { useRentals } from '../../hooks/useRentals.js'
 import { useLiving } from '../../hooks/useLiving.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE, DAILY_WITHDRAWAL_LIMIT } from '../../constants.js'
-import { formatCurrency, formatIsoDate, getGameDateString } from '../../utils.js'
+import { formatCurrency, formatIsoDateTime, getGameDateString } from '../../utils.js'
 import PropertyImage from '../../components/PropertyImage.jsx'
 
 export default function ClientScreen() {
@@ -150,6 +150,7 @@ export default function ClientScreen() {
       queryClient.invalidateQueries({ queryKey: ['bank', currentSlot] })
       queryClient.invalidateQueries({ queryKey: ['transactions', currentSlot, clientId] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
       queryClient.invalidateQueries({ queryKey: ['living', currentSlot, clientId] })
       queryClient.invalidateQueries({ queryKey: ['charts', currentSlot] })
     },
@@ -468,7 +469,7 @@ export default function ClientScreen() {
               return (
                 <div className="log-entry" key={tx.id}>
                   <span className="text-gray-500">
-                    {formatIsoDate(tx.createdAt)} • {getGameDateString(tx.gameDay)}:
+                    {formatIsoDateTime(tx.createdAt)} • {getGameDateString(tx.gameDay)}:
                   </span>{' '}
                   <span className={typeClass}>
                     {typeSymbol} {typeLabel}
@@ -512,7 +513,7 @@ export default function ClientScreen() {
               return (
                 <div className="log-entry" key={`modal-${tx.id}`}>
                   <span className="text-gray-500">
-                    {formatIsoDate(tx.createdAt)} • {getGameDateString(tx.gameDay)}:
+                    {formatIsoDateTime(tx.createdAt)} • {getGameDateString(tx.gameDay)}:
                   </span>{' '}
                   <span className={typeClass}>
                     {typeSymbol} {typeLabel}
