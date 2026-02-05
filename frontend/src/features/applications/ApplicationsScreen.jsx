@@ -30,7 +30,7 @@ export default function ApplicationsScreen() {
 
   const [loanClientId, setLoanClientId] = useState(selectedClientId ? String(selectedClientId) : '')
   const [loanAmount, setLoanAmount] = useState('')
-  const [loanTermYears, setLoanTermYears] = useState(12)
+  const [loanTermYears, setLoanTermYears] = useState(5)
   const [loanError, setLoanError] = useState('')
   const [loanSuccess, setLoanSuccess] = useState('')
 
@@ -101,7 +101,7 @@ export default function ApplicationsScreen() {
       }),
     onSuccess: (_, variables) => {
       setLoanAmount('')
-      setLoanTermYears(12)
+      setLoanTermYears(5)
       setLoanError('')
       setLoanSuccess('Application submitted!')
       setSelectedClientId(variables.clientId)
@@ -120,6 +120,16 @@ export default function ApplicationsScreen() {
     }
   }, [selectedClientId])
 
+  const monthlyPaymentPreview = useMemo(
+    () =>
+      calculateMonthlyPayment({
+        principal: loanAmount,
+        termYears: loanTermYears,
+        interestRate: 0,
+      }),
+    [loanAmount, loanTermYears],
+  )
+
   const handleCreateLoan = () => {
     if (!currentSlot) return
     const clientId = Number(loanClientId)
@@ -134,8 +144,8 @@ export default function ApplicationsScreen() {
       setLoanError('Enter a positive loan amount.')
       return
     }
-    if (!term || term < 5 || term > 30) {
-      setLoanError('Term must be between 5 and 30 years.')
+    if (!term || term < 3 || term > 15) {
+      setLoanError('Term must be between 3 and 15 years.')
       return
     }
 
@@ -193,16 +203,17 @@ export default function ApplicationsScreen() {
 
             <div className="flex flex-col gap-1">
               <label className="bw-label" htmlFor="loan-term">
-                Term (years)
+                Term (years): {loanTermYears}
               </label>
               <input
                 id="loan-term"
-                type="number"
-                className="bw-input"
-                min="5"
-                max="30"
+                type="range"
+                className="bw-range"
+                min="3"
+                max="15"
+                step="1"
                 value={loanTermYears}
-                onChange={(e) => setLoanTermYears(e.target.value)}
+                onChange={(e) => setLoanTermYears(Number(e.target.value))}
               />
             </div>
           </div>
@@ -212,6 +223,13 @@ export default function ApplicationsScreen() {
             </button>
             {loanSuccess && <span className="text-green-600 text-xs">{loanSuccess}</span>}
             {loanError && <span className="text-red-600 text-xs">{loanError}</span>}
+            {monthlyPaymentPreview ? (
+              <span className="text-xs text-gray-500">
+                Est. monthly payment: ${formatCurrency(monthlyPaymentPreview)}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-500">Enter amount to see monthly payment</span>
+            )}
           </div>
         </div>
 

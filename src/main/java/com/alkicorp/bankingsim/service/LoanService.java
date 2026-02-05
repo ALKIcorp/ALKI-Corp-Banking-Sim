@@ -104,8 +104,8 @@ public class LoanService {
     }
 
     private void validateTerm(Integer termYears) {
-        if (termYears == null || termYears < 5 || termYears > 30) {
-            throw new ValidationException("Term must be between 5 and 30 years.");
+        if (termYears == null || termYears < 3 || termYears > 15) {
+            throw new ValidationException("Term must be between 3 and 15 years.");
         }
     }
 }
