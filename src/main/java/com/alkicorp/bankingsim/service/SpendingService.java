@@ -31,8 +31,24 @@ public class SpendingService {
 
     @Transactional
     public List<Transaction> generateSpending(int slotId, Long clientId) {
+        // Fallback entry point (e.g. legacy button). Derive the current game day from the client’s bank state.
         Client client = clientRepository.findById(clientId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        double bankGameDay = client.getBankState() != null && client.getBankState().getGameDay() != null
+            ? client.getBankState().getGameDay()
+            : 0d;
+        return generateSpending(slotId, clientId, (int) Math.floor(bankGameDay));
+    }
+
+    public List<Transaction> generateSpending(int slotId, Long clientId, int gameDay) {
+        Client client = clientRepository.findById(clientId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+
+        // Avoid double-charging the same simulated day
+        if (transactionRepository.existsByClientIdAndTypeAndGameDay(clientId, TransactionType.SPENDING, gameDay)) {
+            return List.of();
+        }
+
         BigDecimal disposableCalc = client.getMonthlyIncomeCache() != null
             ? client.getMonthlyIncomeCache().subtract(
                 client.getMonthlyMandatoryCache() == null ? BigDecimal.ZERO : client.getMonthlyMandatoryCache())
@@ -40,10 +56,11 @@ public class SpendingService {
         if (disposableCalc.compareTo(BigDecimal.ZERO) < 0) {
             disposableCalc = BigDecimal.ZERO;
         }
+
         List<SpendingCategory> categories = spendingCategoryRepository.findAllByOrderByIdAsc();
         BigDecimal disposable = disposableCalc;
-        double gameDay = 0;
         return categories.stream()
+            .filter(cat -> Boolean.TRUE.equals(cat.getDefaultActive()))
             .map(cat -> spendInCategory(client, gameDay, disposable, cat))
             .filter(t -> t != null)
             .toList();
@@ -53,8 +70,11 @@ public class SpendingService {
         if (disposable.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
         }
-        double pct = cat.getMinPctIncome().doubleValue() +
+        double basePct = cat.getMinPctIncome().doubleValue() +
             random.nextDouble() * (cat.getMaxPctIncome().doubleValue() - cat.getMinPctIncome().doubleValue());
+        double variability = cat.getVariability() != null ? cat.getVariability().doubleValue() : 0d;
+        double swing = variability > 0 ? (random.nextDouble() * 2 * variability - variability) : 0d; // range [-var, +var]
+        double pct = Math.max(0d, basePct * (1 + swing));
         BigDecimal target = client.getMonthlyIncomeCache() != null
             ? client.getMonthlyIncomeCache().multiply(BigDecimal.valueOf(pct))
             : BigDecimal.ZERO;

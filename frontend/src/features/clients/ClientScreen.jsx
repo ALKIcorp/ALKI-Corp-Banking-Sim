@@ -139,11 +139,18 @@ export default function ClientScreen() {
     onError: (err) => setError(err.message),
   })
 
-  const spendingMutation = useMutation({
-    mutationFn: ({ slotId, clientId: cid }) =>
-      apiFetch(`${API_BASE}/${slotId}/clients/${cid}/spendings/run`, { method: 'POST' }),
+  const sellPropertyMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid, productId }) =>
+      apiFetch(`${API_BASE}/${slotId}/clients/${cid}/properties/${productId}/sell`, { method: 'POST' }),
     onSuccess: () => {
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['client-properties', currentSlot, clientId] })
+      queryClient.invalidateQueries({ queryKey: ['clients', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['bank', currentSlot] })
       queryClient.invalidateQueries({ queryKey: ['transactions', currentSlot, clientId] })
+      queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
+      queryClient.invalidateQueries({ queryKey: ['living', currentSlot, clientId] })
+      queryClient.invalidateQueries({ queryKey: ['charts', currentSlot] })
     },
     onError: (err) => setError(err.message),
   })
@@ -393,17 +400,6 @@ export default function ClientScreen() {
           </div>
         </div>
 
-        <div className="mt-4">
-          <h3 className="text-sm font-semibold mb-1 uppercase">Spending</h3>
-          <button
-            className="bw-button"
-            onClick={() => spendingMutation.mutate({ slotId: currentSlot, clientId })}
-            disabled={spendingMutation.isPending}
-          >
-            Run Daily Spending
-          </button>
-        </div>
-
         <p id="client-error-message" className="text-red-600 text-xs mt-2 text-center">
           {error}
         </p>
@@ -421,17 +417,30 @@ export default function ClientScreen() {
                 ) : (
                   <div className="property-image property-image-placeholder">No Image</div>
                 )}
-                <div className="property-body">
-                  <div className="property-title">{property.name}</div>
-                  <div className="property-meta">
-                    {property.rooms} rooms • {property.sqft2} sqft
-                  </div>
-                  <div className="property-price">${formatCurrency(property.price)}</div>
+              <div className="property-body">
+                <div className="property-title">{property.name}</div>
+                <div className="property-meta">
+                  {property.rooms} rooms • {property.sqft2} sqft
                 </div>
+                <div className="property-price">${formatCurrency(property.price)}</div>
+                <button
+                  className="bw-button w-full mt-2"
+                  onClick={() =>
+                    sellPropertyMutation.mutate({
+                      slotId: currentSlot,
+                      clientId,
+                      productId: property.id,
+                    })
+                  }
+                  disabled={sellPropertyMutation.isPending}
+                >
+                  Sell for ${formatCurrency(property.price)}
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
+      </div>
 
         <div className="transaction-log">
           <h4 className="flex items-center justify-between">
@@ -446,13 +455,17 @@ export default function ClientScreen() {
             {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
             {transactions.map((tx) => {
               const isDeposit =
-                tx.type === 'DEPOSIT' || tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING'
+                tx.type === 'DEPOSIT' ||
+                tx.type === 'LOAN_DISBURSEMENT' ||
+                tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING' ||
+                tx.type === 'PROPERTY_SALE'
               const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
               const typeSymbol = isDeposit ? '➕' : '➖'
               const typeLabel = (() => {
                 if (tx.type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
+                if (tx.type === 'PROPERTY_SALE') return 'Property Sale'
                 return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
               })()
               return (
@@ -486,13 +499,17 @@ export default function ClientScreen() {
             {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
             {transactions.map((tx) => {
               const isDeposit =
-                tx.type === 'DEPOSIT' || tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING'
+                tx.type === 'DEPOSIT' ||
+                tx.type === 'LOAN_DISBURSEMENT' ||
+                tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING' ||
+                tx.type === 'PROPERTY_SALE'
               const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
               const typeSymbol = isDeposit ? '➕' : '➖'
               const typeLabel = (() => {
                 if (tx.type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
                 if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
+                if (tx.type === 'PROPERTY_SALE') return 'Property Sale'
                 return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
               })()
               return (

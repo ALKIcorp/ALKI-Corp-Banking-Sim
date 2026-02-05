@@ -11,6 +11,15 @@ export function AuthProvider({ children }) {
     localStorage.getItem(STORAGE_KEYS.adminStatus) === 'true',
   )
 
+  const persistSession = useCallback((nextToken, nextAdminStatus) => {
+    if (nextToken) {
+      localStorage.setItem(STORAGE_KEYS.authToken, nextToken)
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.authToken)
+    }
+    localStorage.setItem(STORAGE_KEYS.adminStatus, String(Boolean(nextAdminStatus)))
+  }, [])
+
   const clearSession = useCallback(() => {
     setToken(null)
     setAdminStatus(false)
@@ -41,6 +50,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ usernameOrEmail, password }),
     })
+    persistSession(data.token, data.adminStatus)
     setToken(data.token)
     setAdminStatus(Boolean(data.adminStatus))
   }, [])
@@ -50,6 +60,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ username, email, password, adminStatus: isAdmin }),
     })
+    persistSession(data.token, data.adminStatus)
     setToken(data.token)
     setAdminStatus(Boolean(data.adminStatus))
   }, [])

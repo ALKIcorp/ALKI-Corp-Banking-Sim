@@ -178,16 +178,16 @@ public class SimulationService {
                     client.setDailyWithdrawn(BigDecimal.ZERO);
                     clientUpdated = true;
                 }
+                // run per-day simulations aligned with the specific day value
+                payrollService.runPayroll(state.getSlotId(), day);
+                rentService.chargeRent(state.getSlotId(), day);
+                final int dayValue = day; // capture loop value for lambda use
+                clients.forEach(c -> spendingService.generateSpending(state.getSlotId(), c.getId(), dayValue));
+                bankruptcyService.checkDischarge(state.getSlotId());
             }
             if (clientUpdated) {
                 clientRepository.saveAll(clients);
             }
-            // run periodic simulations aligned with game days
-            payrollService.runPayroll(state.getSlotId(), newDayValue);
-            rentService.chargeRent(state.getSlotId(), newDayValue);
-            // spending per client can be heavy; keep lightweight call here
-            clients.forEach(c -> spendingService.generateSpending(state.getSlotId(), c.getId()));
-            bankruptcyService.checkDischarge(state.getSlotId());
         }
         return bankStateRepository.save(state);
     }

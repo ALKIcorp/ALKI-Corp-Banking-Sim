@@ -91,6 +91,14 @@ public class ClientController {
         return toResponse(tx);
     }
 
+    @PostMapping("/{clientId}/properties/{productId}/sell")
+    public TransactionResponse sellProperty(@PathVariable int slotId,
+                                            @PathVariable Long clientId,
+                                            @PathVariable Long productId) {
+        Transaction tx = productService.sellOwnedProperty(slotId, clientId, productId);
+        return toResponse(tx);
+    }
+
     private ClientResponse toResponse(Client client) {
         return ClientResponse.builder()
             .id(client.getId())

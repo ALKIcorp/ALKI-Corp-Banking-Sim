@@ -13,6 +13,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByIdAndSlotIdAndCreatedById(Long id, int slotId, Long userId);
 
+    Optional<Product> findByIdAndSlotIdAndOwnerClientId(Long id, int slotId, Long ownerClientId);
+
     Optional<Product> findByIdAndSlotId(Long id, int slotId);
 
     List<Product> findByOwnerClientId(Long clientId);

@@ -6,16 +6,18 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -41,23 +43,41 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
+                // Public assets + SPA entry points
                 .requestMatchers(
                     "/",
                     "/index.html",
                     "/assets/**",
                     "/vite.svg",
-                    "/banking/**",
+                    "/banksim_logo.png",
+                    "/favicon.ico",
+                    "/static/**",
                     "/css/**",
                     "/js/**",
-                    "/static/**",
-                    "/favicon.ico",
+                    "/banking/**",
+                    // Client‑side routes that should always render the SPA shell
+                    "/login",
+                    "/home",
+                    "/bank",
+                    "/clients/**",
+                    "/investment",
+                    "/applications",
+                    "/properties",
+                    "/admin/**"
+                ).permitAll()
+                // Auth endpoints and docs remain open
+                .requestMatchers(
                     "/auth/**",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html"
                 ).permitAll()
-                .anyRequest().authenticated()
+                // Lock down API traffic
+                .requestMatchers("/api/**").authenticated()
+                // Anything else that slips through can be served without auth
+                .anyRequest().permitAll()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
