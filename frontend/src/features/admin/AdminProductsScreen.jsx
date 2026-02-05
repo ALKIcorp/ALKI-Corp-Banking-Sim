@@ -8,6 +8,7 @@ import { useAdminProducts } from '../../hooks/useProducts.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE } from '../../constants.js'
 import { formatCurrency } from '../../utils.js'
+import PropertyImage from '../../components/PropertyImage.jsx'
 
 function normalizeMortgageRate(rate) {
   const value = Number(rate)
@@ -316,11 +317,7 @@ export default function AdminProductsScreen() {
             {!adminProducts.length && <p className="text-xs text-gray-500">No properties added yet.</p>}
             {adminProducts.map((property) => (
               <div key={property.id} className="property-card">
-                {property.imageUrl ? (
-                  <div className="property-image" style={{ backgroundImage: `url(${property.imageUrl})` }} />
-                ) : (
-                  <div className="property-image property-image-placeholder">No Image</div>
-                )}
+                <PropertyImage src={property.imageUrl} alt={`${property.name} photo`} />
                 <div className="property-body">
                   <div className="property-title">{property.name}</div>
                   <div className="property-description">{property.description}</div>

@@ -5,6 +5,7 @@ import com.alkicorp.bankingsim.model.SpendingCategory;
 import com.alkicorp.bankingsim.model.Transaction;
 import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.repository.ClientRepository;
+import com.alkicorp.bankingsim.repository.ClientJobRepository;
 import com.alkicorp.bankingsim.repository.SpendingCategoryRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
 import java.math.BigDecimal;
@@ -25,6 +26,7 @@ public class SpendingService {
 
     private final SpendingCategoryRepository spendingCategoryRepository;
     private final ClientRepository clientRepository;
+    private final ClientJobRepository clientJobRepository;
     private final TransactionRepository transactionRepository;
     private final Clock clock = Clock.systemUTC();
     private final Random random = new Random();
@@ -49,10 +51,9 @@ public class SpendingService {
             return List.of();
         }
 
-        BigDecimal disposableCalc = client.getMonthlyIncomeCache() != null
-            ? client.getMonthlyIncomeCache().subtract(
-                client.getMonthlyMandatoryCache() == null ? BigDecimal.ZERO : client.getMonthlyMandatoryCache())
-            : BigDecimal.ZERO;
+        BigDecimal monthlyIncome = resolveMonthlyIncome(client);
+        BigDecimal mandatory = client.getMonthlyMandatoryCache() == null ? BigDecimal.ZERO : client.getMonthlyMandatoryCache();
+        BigDecimal disposableCalc = monthlyIncome.subtract(mandatory);
         if (disposableCalc.compareTo(BigDecimal.ZERO) < 0) {
             disposableCalc = BigDecimal.ZERO;
         }
@@ -92,5 +93,21 @@ public class SpendingService {
         tx.setGameDay((int) Math.floor(gameDay));
         tx.setCreatedAt(Instant.now(clock));
         return transactionRepository.save(tx);
+    }
+
+    /**
+     * Populate monthlyIncomeCache if missing by summing active jobs' annual salaries / 12.
+     * This keeps spending working even when the cache was never prefilled elsewhere.
+     */
+    private BigDecimal resolveMonthlyIncome(Client client) {
+        if (client.getMonthlyIncomeCache() != null) {
+            return client.getMonthlyIncomeCache();
+        }
+        BigDecimal monthlyIncome = clientJobRepository.findByClientId(client.getId()).stream()
+            .map(cj -> cj.getJob().getAnnualSalary().divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        client.setMonthlyIncomeCache(monthlyIncome);
+        clientRepository.save(client);
+        return monthlyIncome;
     }
 }

@@ -13,6 +13,7 @@ import { useLiving } from '../../hooks/useLiving.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE, DAILY_WITHDRAWAL_LIMIT } from '../../constants.js'
 import { formatCurrency, formatIsoDate, getGameDateString } from '../../utils.js'
+import PropertyImage from '../../components/PropertyImage.jsx'
 
 export default function ClientScreen() {
   const { clientId } = useParams()
@@ -412,11 +413,7 @@ export default function ClientScreen() {
             {!ownedProperties.length && <p className="text-xs text-gray-500">No properties owned yet.</p>}
             {ownedProperties.map((property) => (
               <div key={property.id} className="property-card">
-                {property.imageUrl ? (
-                  <div className="property-image" style={{ backgroundImage: `url(${property.imageUrl})` }} />
-                ) : (
-                  <div className="property-image property-image-placeholder">No Image</div>
-                )}
+                <PropertyImage src={property.imageUrl} alt={`${property.name} photo`} />
               <div className="property-body">
                 <div className="property-title">{property.name}</div>
                 <div className="property-meta">

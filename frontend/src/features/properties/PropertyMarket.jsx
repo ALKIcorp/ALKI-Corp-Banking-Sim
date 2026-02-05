@@ -8,6 +8,7 @@ import { useMortgages } from '../../hooks/useMortgages.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE } from '../../constants.js'
 import { formatCurrency } from '../../utils.js'
+import PropertyImage from '../../components/PropertyImage.jsx'
 
 export default function PropertyMarket() {
   const { currentSlot, selectedClientId } = useSlot()
@@ -77,11 +78,7 @@ export default function PropertyMarket() {
               {selectedClientId && appliedPropertyIds.has(String(property.id)) && (
                 <span className="property-ribbon">Application Sent</span>
               )}
-              {property.imageUrl ? (
-                <div className="property-image" style={{ backgroundImage: `url(${property.imageUrl})` }} />
-              ) : (
-                <div className="property-image property-image-placeholder">No Image</div>
-              )}
+              <PropertyImage src={property.imageUrl} alt={`${property.name} photo`} />
               <div className="property-body">
                 <div className="property-title">{property.name}</div>
                 <div className="property-description">{property.description}</div>
@@ -111,11 +108,7 @@ export default function PropertyMarket() {
             setError('')
           }}
         >
-          {selectedProperty.imageUrl ? (
-            <div className="property-modal-image" style={{ backgroundImage: `url(${selectedProperty.imageUrl})` }} />
-          ) : (
-            <div className="property-modal-image property-image-placeholder">No Image</div>
-          )}
+          <PropertyImage src={selectedProperty.imageUrl} alt={`${selectedProperty.name} photo`} variant="modal" />
           <p className="text-sm font-semibold mt-2">${formatCurrency(selectedProperty.price)}</p>
           <p className="text-xs text-gray-600">
             {selectedProperty.rooms} rooms • {selectedProperty.sqft2} sqft
