@@ -4,11 +4,14 @@ import com.alkicorp.bankingsim.model.Mortgage;
 import com.alkicorp.bankingsim.model.enums.MortgageStatus;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MortgageRepository extends JpaRepository<Mortgage, Long> {
+    @EntityGraph(attributePaths = { "product" })
     List<Mortgage> findBySlotId(int slotId);
 
+    @EntityGraph(attributePaths = { "product" })
     List<Mortgage> findBySlotIdAndUserId(int slotId, Long userId);
 
     List<Mortgage> findByClientId(Long clientId);
