@@ -89,9 +89,7 @@ public class ClientService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
                                 + "/start to initialize the slot."));
-        return user.isAdminStatus()
-                ? clientRepository.findBySlotId(slotId)
-                : clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
+        return clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
     }
 
     @Transactional(readOnly = true)
@@ -109,9 +107,7 @@ public class ClientService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
                                 + "/start to initialize the slot."));
-        var clientOpt = user.isAdminStatus()
-                ? clientRepository.findByIdAndSlotId(clientId, slotId)
-                : clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId());
+        var clientOpt = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId());
         return clientOpt.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
     }
 
