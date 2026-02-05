@@ -97,9 +97,7 @@ public class LivingService {
         User user = currentUserService.getCurrentUser();
         double gameDay = simulationService.getAndAdvanceState(user, slotId)
                 .map(s -> s.getGameDay()).orElse(0d);
-        int dayOfMonth = ((int) Math.floor(gameDay) % 30) + 1;
-        int daysUntilFirst = dayOfMonth == 1 ? 30 : (31 - dayOfMonth);
-        return (int) Math.floor(gameDay) + daysUntilFirst;
+        return (int) Math.floor(gameDay) + SimulationConstants.REPAYMENT_PERIOD_DAYS;
     }
 
     @Transactional(readOnly = true)

@@ -32,6 +32,6 @@ public class PayrollController {
             .getGameDay();
 
         // Use the up-to-date simulated day so any due paychecks post immediately.
-        payrollService.runPayroll(slotId, currentGameDay);
+        payrollService.runPayroll(slotId, user.getId(), currentGameDay);
     }
 }

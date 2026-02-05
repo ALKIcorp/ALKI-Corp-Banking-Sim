@@ -167,7 +167,8 @@ public class SpendingService {
      * elsewhere.
      */
     private BigDecimal resolveMonthlyIncome(Client client) {
-        if (client.getMonthlyIncomeCache() != null) {
+        if (client.getMonthlyIncomeCache() != null
+                && client.getMonthlyIncomeCache().compareTo(BigDecimal.ZERO) > 0) {
             return client.getMonthlyIncomeCache();
         }
         BigDecimal monthlyIncome = clientJobRepository.findByClientId(client.getId()).stream()

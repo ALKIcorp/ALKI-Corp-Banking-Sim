@@ -28,8 +28,8 @@ public class PayrollService {
     private final Clock clock = Clock.systemUTC();
 
     @Transactional
-    public void runPayroll(int slotId, double gameDay) {
-        List<ClientJob> jobs = clientJobRepository.findBySlotId(slotId);
+    public void runPayroll(int slotId, Long userId, double gameDay) {
+        List<ClientJob> jobs = clientJobRepository.findBySlotIdAndClientBankStateUserId(slotId, userId);
         for (ClientJob cj : jobs) {
             if (!Boolean.TRUE.equals(cj.getPrimary())) {
                 continue;

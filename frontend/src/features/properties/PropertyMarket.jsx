@@ -7,10 +7,29 @@ import { useSlot } from '../../providers/SlotProvider.jsx'
 import { useAllAvailableProducts } from '../../hooks/useProducts.js'
 import { useMortgages } from '../../hooks/useMortgages.js'
 import { useClients } from '../../hooks/useClients.js'
+import { useBank } from '../../hooks/useBank.js'
 import { apiFetch } from '../../api.js'
 import { API_BASE } from '../../constants.js'
 import { formatCurrency } from '../../utils.js'
 import PropertyImage from '../../components/PropertyImage.jsx'
+
+function normalizeMortgageRate(rate) {
+  const value = Number(rate)
+  if (!Number.isFinite(value)) return 0
+  return value > 1 ? value / 100 : value
+}
+
+function calculateMonthlyPayment({ principal, termYears, interestRate }) {
+  const principalValue = Number(principal || 0)
+  const years = Number(termYears || 0)
+  const rate = Number(interestRate || 0)
+  if (!principalValue || !years) return null
+  const months = years * 12
+  const monthlyRate = rate / 12
+  if (!monthlyRate) return principalValue / months
+  const factor = Math.pow(1 + monthlyRate, months)
+  return (principalValue * monthlyRate * factor) / (factor - 1)
+}
 
 export default function PropertyMarket() {
   const { currentSlot, selectedClientId, setCurrentSlot, setSelectedClientId } = useSlot()
@@ -25,6 +44,9 @@ export default function PropertyMarket() {
 
   const clientsQuery = useClients(currentSlot, true)
   const clients = clientsQuery.data || []
+  const previewSlotId = selectedProperty?.slotId ?? currentSlot
+  const bankQuery = useBank(previewSlotId, false)
+  const mortgageRate = normalizeMortgageRate(bankQuery.data?.mortgageRate)
 
   // If we navigated here from a specific client page, carry that selection into context.
   useEffect(() => {
@@ -40,6 +62,17 @@ export default function PropertyMarket() {
 
   const mortgages = mortgagesQuery.data || []
   const properties = productsQuery.data || []
+  const monthlyPaymentPreview = useMemo(() => {
+    if (!selectedProperty) return null
+    const price = Number(selectedProperty.price || 0)
+    const downPayment = Number(mortgageDownPayment || 0)
+    const principal = Math.max(0, price - downPayment)
+    return calculateMonthlyPayment({
+      principal,
+      termYears: mortgageTermYears,
+      interestRate: mortgageRate,
+    })
+  }, [selectedProperty, mortgageDownPayment, mortgageTermYears, mortgageRate])
 
   const appliedPropertyIds = useMemo(() => {
     if (!selectedClientId) return new Set()
@@ -120,7 +153,6 @@ export default function PropertyMarket() {
               <div className="property-body">
                 <div className="property-title">{property.name}</div>
                 <div className="property-description">{property.description}</div>
-                <div className="property-meta">Slot {property.slotId}</div>
                 <div className="property-price">${formatCurrency(property.price)}</div>
                 <button
                   className="bw-button w-full mt-2"
@@ -149,7 +181,10 @@ export default function PropertyMarket() {
         >
           <PropertyImage src={selectedProperty.imageUrl} alt={`${selectedProperty.name} photo`} variant="modal" />
           <p className="text-sm font-semibold mt-2">${formatCurrency(selectedProperty.price)}</p>
-          <p className="text-xs text-gray-500">Slot {selectedProperty.slotId}</p>
+          <p className="text-xs mortgage-payment-preview">
+            Est. monthly:{' '}
+            {monthlyPaymentPreview != null ? `$${formatCurrency(monthlyPaymentPreview)}` : '--'}
+          </p>
           <p className="text-xs text-gray-600">
             {selectedProperty.rooms} rooms • {selectedProperty.sqft2} sqft
           </p>

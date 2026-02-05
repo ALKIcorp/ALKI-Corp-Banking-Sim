@@ -2,6 +2,8 @@ package com.alkicorp.bankingsim.web;
 
 import com.alkicorp.bankingsim.model.ClientLiving;
 import com.alkicorp.bankingsim.model.Rental;
+import com.alkicorp.bankingsim.auth.model.User;
+import com.alkicorp.bankingsim.auth.service.CurrentUserService;
 import com.alkicorp.bankingsim.service.LivingService;
 import com.alkicorp.bankingsim.service.RentService;
 import com.alkicorp.bankingsim.web.dto.LivingResponse;
@@ -22,6 +24,7 @@ public class LivingController {
 
     private final LivingService livingService;
     private final RentService rentService;
+    private final CurrentUserService currentUserService;
 
     @GetMapping("/rentals")
     public List<RentalResponse> rentals(@PathVariable int slotId) {
@@ -54,7 +57,8 @@ public class LivingController {
 
     @PostMapping("/rentals/run-rent")
     public void triggerRent(@PathVariable int slotId) {
-        rentService.chargeRent(slotId, 0d);
+        User user = currentUserService.getCurrentUser();
+        rentService.chargeRent(slotId, user.getId(), 0d);
     }
 
     private RentalResponse toRentalResponse(Rental r) {

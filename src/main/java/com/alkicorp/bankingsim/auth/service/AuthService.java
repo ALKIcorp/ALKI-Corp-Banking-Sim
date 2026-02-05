@@ -61,7 +61,8 @@ public class AuthService {
         user.setEmail(request.getEmail().trim());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRoles(Set.of(userRole));
-        user.setAdminStatus(request.isAdminStatus());
+        // Admin status is not assignable during self-registration.
+        user.setAdminStatus(false);
 
         userRepository.save(user);
 

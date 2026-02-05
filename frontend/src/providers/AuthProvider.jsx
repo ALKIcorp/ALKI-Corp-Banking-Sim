@@ -55,10 +55,10 @@ export function AuthProvider({ children }) {
     setAdminStatus(Boolean(data.adminStatus))
   }, [])
 
-  const register = useCallback(async ({ username, email, password, adminStatus: isAdmin }) => {
+  const register = useCallback(async ({ username, email, password }) => {
     const data = await apiFetch('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, email, password, adminStatus: isAdmin }),
+      body: JSON.stringify({ username, email, password }),
     })
     persistSession(data.token, data.adminStatus)
     setToken(data.token)

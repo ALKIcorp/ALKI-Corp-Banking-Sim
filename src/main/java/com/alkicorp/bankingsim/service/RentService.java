@@ -23,16 +23,25 @@ public class RentService {
     private final Clock clock = Clock.systemUTC();
 
     @Transactional
-    public void chargeRent(int slotId, double gameDay) {
-        int dayOfMonth = ((int) Math.floor(gameDay) % 30) + 1;
-        if (dayOfMonth != 1) {
-            return;
-        }
-        List<ClientLiving> livings = clientLivingRepository.findBySlotId(slotId);
+    public void chargeRent(int slotId, Long userId, double gameDay) {
+        List<ClientLiving> livings = clientLivingRepository.findBySlotIdAndClientBankStateUserId(slotId, userId);
+        int day = (int) Math.floor(gameDay);
         for (ClientLiving living : livings) {
-            if (living.getMonthlyRentCache() != null && living.getMonthlyRentCache().compareTo(BigDecimal.ZERO) > 0) {
-                debitRent(living.getClient(), living.getMonthlyRentCache(), gameDay);
+            if (living.getMonthlyRentCache() == null || living.getMonthlyRentCache().compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
             }
+            Integer nextRentDay = living.getNextRentDay();
+            if (nextRentDay == null) {
+                living.setNextRentDay(day + SimulationConstants.REPAYMENT_PERIOD_DAYS);
+                clientLivingRepository.save(living);
+                continue;
+            }
+            if (day < nextRentDay) {
+                continue;
+            }
+            debitRent(living.getClient(), living.getMonthlyRentCache(), gameDay);
+            living.setNextRentDay(day + SimulationConstants.REPAYMENT_PERIOD_DAYS);
+            clientLivingRepository.save(living);
         }
     }
 

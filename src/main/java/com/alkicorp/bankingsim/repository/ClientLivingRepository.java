@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ClientLivingRepository extends JpaRepository<ClientLiving, Long> {
     Optional<ClientLiving> findByClientIdAndSlotId(Long clientId, int slotId);
     List<ClientLiving> findBySlotId(int slotId);
+    List<ClientLiving> findBySlotIdAndClientBankStateUserId(int slotId, Long userId);
 }

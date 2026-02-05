@@ -136,7 +136,7 @@ public class MortgageService {
                         ? mortgage.getLoanAmount().divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP)
                         : mortgage.getLoanAmount();
                 mortgage.setMonthlyPayment(monthlyPayment);
-                mortgage.setNextPaymentDay((int) Math.floor(state.getGameDay()) + 30);
+                mortgage.setNextPaymentDay((int) Math.floor(state.getGameDay()) + SimulationConstants.REPAYMENT_PERIOD_DAYS);
             }
         } else if (status == MortgageStatus.REJECTED) {
             // Remove property from market even if rejected, as requested

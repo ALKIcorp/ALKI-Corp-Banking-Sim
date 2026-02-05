@@ -88,7 +88,7 @@ public class LoanService {
                     : loan.getAmount();
             loan.setMonthlyPayment(monthlyPayment);
             loan.setNextPaymentDay((int) Math.floor(simulationService.getAndAdvanceState(user, slotId)
-                    .map(BankState::getGameDay).orElse(0d)) + 30);
+                    .map(BankState::getGameDay).orElse(0d)) + SimulationConstants.REPAYMENT_PERIOD_DAYS);
         }
         loan.setStatus(status);
         loan.setUpdatedAt(Instant.now(clock));

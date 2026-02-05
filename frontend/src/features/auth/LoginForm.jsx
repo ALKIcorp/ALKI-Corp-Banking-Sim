@@ -12,15 +12,13 @@ export default function LoginForm() {
     email: '',
     password: '',
     confirm: '',
-    adminStatus: false,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const isLogin = mode === 'login'
 
   const handleChange = (field) => (event) => {
-    const value = field === 'adminStatus' ? event.target.checked : event.target.value
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => ({ ...prev, [field]: event.target.value }))
   }
 
   const handleSubmit = async (event) => {
@@ -45,7 +43,6 @@ export default function LoginForm() {
             username: form.username,
             email: form.email,
             password: form.password,
-            adminStatus: form.adminStatus,
           })
           navigate('/home')
         }
@@ -114,15 +111,6 @@ export default function LoginForm() {
                 onChange={handleChange('confirm')}
                 autoComplete="new-password"
               />
-              <label className="password-toggle">
-                <input
-                  type="checkbox"
-                  className="bw-checkbox"
-                  checked={form.adminStatus}
-                  onChange={handleChange('adminStatus')}
-                />
-                <span>Make new user admin</span>
-              </label>
             </>
           )}
           <p className="text-red-600 text-xs mt-2 text-center min-h-[1rem]">{error}</p>

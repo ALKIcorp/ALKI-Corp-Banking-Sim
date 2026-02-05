@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ClientJobRepository extends JpaRepository<ClientJob, Long> {
     List<ClientJob> findBySlotId(int slotId);
+    List<ClientJob> findBySlotIdAndClientBankStateUserId(int slotId, Long userId);
     List<ClientJob> findByClientId(Long clientId);
 
     @EntityGraph(attributePaths = "job")

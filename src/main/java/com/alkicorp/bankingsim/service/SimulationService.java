@@ -238,7 +238,7 @@ public class SimulationService {
                 for (Client client : clients) {
                     client.setDailyWithdrawn(BigDecimal.ZERO);
                 }
-                rentService.chargeRent(state.getSlotId(), day);
+                rentService.chargeRent(state.getSlotId(), state.getUser().getId(), day);
                 processLoanRepayments(state, day);
                 processMortgageRepayments(state, day);
                 final int dayValue = day; // capture loop value for lambda use
@@ -248,7 +248,7 @@ public class SimulationService {
         }
         // Run payroll with the fractional clock to support more granular triggers
         // and catch up if time was skipped.
-        payrollService.runPayroll(state.getSlotId(), newDayValue);
+        payrollService.runPayroll(state.getSlotId(), state.getUser().getId(), newDayValue);
 
         return bankStateRepository.save(state);
     }
