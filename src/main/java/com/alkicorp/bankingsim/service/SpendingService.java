@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import lombok.RequiredArgsConstructor;
@@ -66,21 +67,14 @@ public class SpendingService {
         BigDecimal disposable = disposableCalc;
         return categories.stream()
                 .filter(cat -> Boolean.TRUE.equals(cat.getDefaultActive()))
-                .map(cat -> spendInCategory(client, gameDay, disposable, cat))
-                .filter(t -> t != null)
+                .flatMap(cat -> spendInCategory(client, gameDay, disposable, cat).stream())
                 .toList();
     }
 
-    private Transaction spendInCategory(Client client, double gameDay, BigDecimal disposable, SpendingCategory cat) {
+    private List<Transaction> spendInCategory(Client client, double gameDay, BigDecimal disposable,
+            SpendingCategory cat) {
         if (disposable.compareTo(BigDecimal.ZERO) <= 0) {
-            return null;
-        }
-
-        // Random day distribution: each category has a ~1/30 chance per day to trigger
-        // This spreads expenses throughout the month instead of all on the same day
-        double triggerChance = 1.0 / 30.0;
-        if (random.nextDouble() > triggerChance) {
-            return null; // Skip this category today
+            return List.of();
         }
 
         double basePct = cat.getMinPctIncome().doubleValue() +
@@ -96,20 +90,74 @@ public class SpendingService {
         BigDecimal target = disposable.multiply(BigDecimal.valueOf(pct));
 
         // In this simulation, 1 game day = 1 month (12 days per year).
-        // Therefore, the "monthly" target is the daily spend.
-        BigDecimal amount = target.min(client.getCheckingBalance());
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            return null;
+        // Split the monthly target into multiple events to spread spending across the month.
+        BigDecimal available = target.min(client.getCheckingBalance());
+        if (available.compareTo(BigDecimal.ZERO) <= 0) {
+            return List.of();
         }
-        client.setCheckingBalance(client.getCheckingBalance().subtract(amount));
-        clientRepository.save(client);
-        Transaction tx = new Transaction();
-        tx.setClient(client);
-        tx.setType(TransactionType.SPENDING);
-        tx.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
-        tx.setGameDay((int) Math.floor(gameDay));
-        tx.setCreatedAt(Instant.now(clock));
-        return transactionRepository.save(tx);
+
+        int events = Math.max(1, SimulationConstants.SPENDING_EVENTS_PER_MONTH);
+        List<BigDecimal> splits = splitAmount(available, events);
+
+        List<Transaction> transactions = new ArrayList<>();
+        BigDecimal remainingBalance = client.getCheckingBalance();
+        Instant now = Instant.now(clock);
+        for (BigDecimal split : splits) {
+            if (remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+            BigDecimal amount = split.min(remainingBalance).setScale(2, RoundingMode.HALF_UP);
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            remainingBalance = remainingBalance.subtract(amount);
+            Transaction tx = new Transaction();
+            tx.setClient(client);
+            tx.setType(TransactionType.SPENDING);
+            tx.setAmount(amount);
+            tx.setGameDay((int) Math.floor(gameDay));
+            tx.setCreatedAt(now);
+            transactions.add(transactionRepository.save(tx));
+        }
+
+        if (!transactions.isEmpty()) {
+            client.setCheckingBalance(remainingBalance);
+            clientRepository.save(client);
+        }
+
+        return transactions;
+    }
+
+    private List<BigDecimal> splitAmount(BigDecimal total, int events) {
+        if (events <= 1) {
+            return List.of(total);
+        }
+        double[] weights = new double[events];
+        double weightSum = 0d;
+        for (int i = 0; i < events; i++) {
+            double weight = 0.5 + random.nextDouble(); // 0.5 - 1.5
+            weights[i] = weight;
+            weightSum += weight;
+        }
+        List<BigDecimal> splits = new ArrayList<>(events);
+        BigDecimal remaining = total;
+        for (int i = 0; i < events; i++) {
+            BigDecimal portion;
+            if (i == events - 1) {
+                portion = remaining;
+            } else {
+                double ratio = weights[i] / weightSum;
+                portion = total.multiply(BigDecimal.valueOf(ratio)).setScale(2, RoundingMode.HALF_UP);
+                if (portion.compareTo(remaining) > 0) {
+                    portion = remaining;
+                }
+                remaining = remaining.subtract(portion);
+            }
+            if (portion.compareTo(BigDecimal.ZERO) > 0) {
+                splits.add(portion);
+            }
+        }
+        return splits;
     }
 
     /**
