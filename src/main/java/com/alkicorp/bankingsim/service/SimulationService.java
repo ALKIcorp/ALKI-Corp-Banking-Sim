@@ -4,10 +4,16 @@ import com.alkicorp.bankingsim.auth.model.User;
 import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.InvestmentEvent;
+import com.alkicorp.bankingsim.model.Loan;
+import com.alkicorp.bankingsim.model.Mortgage;
+import com.alkicorp.bankingsim.model.Transaction;
 import com.alkicorp.bankingsim.model.enums.InvestmentEventType;
+import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.repository.BankStateRepository;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.InvestmentEventRepository;
+import com.alkicorp.bankingsim.repository.LoanRepository;
+import com.alkicorp.bankingsim.repository.MortgageRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
 import com.alkicorp.bankingsim.service.BankruptcyService;
 import com.alkicorp.bankingsim.service.PayrollService;
@@ -39,6 +45,8 @@ public class SimulationService {
     private final ClientRepository clientRepository;
     private final TransactionRepository transactionRepository;
     private final InvestmentEventRepository investmentEventRepository;
+    private final LoanRepository loanRepository;
+    private final MortgageRepository mortgageRepository;
     private final PayrollService payrollService;
     private final RentService rentService;
     private final SpendingService spendingService;
@@ -181,6 +189,8 @@ public class SimulationService {
                 // run per-day simulations aligned with the specific day value
                 payrollService.runPayroll(state.getSlotId(), day);
                 rentService.chargeRent(state.getSlotId(), day);
+                processLoanRepayments(state, day);
+                processMortgageRepayments(state, day);
                 final int dayValue = day; // capture loop value for lambda use
                 clients.forEach(c -> spendingService.generateSpending(state.getSlotId(), c.getId(), dayValue));
                 bankruptcyService.checkDischarge(state.getSlotId());
@@ -222,6 +232,88 @@ public class SimulationService {
             recordInvestmentEvent(state.getSlotId(), state.getUser(), InvestmentEventType.DIVIDEND, dividendAmount, day);
         }
         state.setNextDividendDay(day + SimulationConstants.DAYS_PER_YEAR);
+    }
+
+    private void processLoanRepayments(BankState state, int day) {
+        List<Loan> loans = loanRepository.findBySlotIdAndUserId(state.getSlotId(), state.getUser().getId());
+        for (Loan loan : loans) {
+            if (loan.getNextPaymentDay() == null || loan.getMonthlyPayment() == null) {
+                continue;
+            }
+            if (loan.getStatus() != com.alkicorp.bankingsim.model.enums.LoanStatus.APPROVED) {
+                continue;
+            }
+            if (day < loan.getNextPaymentDay()) {
+                continue;
+            }
+            Client client = loan.getClient();
+            BigDecimal amountDue = loan.getMonthlyPayment();
+            BigDecimal payAmount = client.getCheckingBalance().min(amountDue);
+            Instant now = Instant.now(clock);
+            if (payAmount.compareTo(BigDecimal.ZERO) > 0) {
+                client.setCheckingBalance(client.getCheckingBalance().subtract(payAmount));
+                Transaction tx = new Transaction();
+                tx.setClient(client);
+                tx.setType(TransactionType.PERSONAL_LOAN_PAYMENT);
+                tx.setAmount(payAmount.setScale(2, RoundingMode.HALF_UP));
+                tx.setGameDay(day);
+                tx.setCreatedAt(now);
+                transactionRepository.save(tx);
+                state.setLiquidCash(state.getLiquidCash().add(payAmount));
+                loan.setLastPaymentStatus(payAmount.compareTo(amountDue) >= 0 ? "PAID" : "PARTIAL");
+                if (payAmount.compareTo(amountDue) < 0) {
+                    loan.setMissedPayments(loan.getMissedPayments() + 1);
+                }
+            } else {
+                loan.setLastPaymentStatus("MISSED");
+                loan.setMissedPayments(loan.getMissedPayments() + 1);
+            }
+            loan.setNextPaymentDay(day + 30);
+            loan.setUpdatedAt(now);
+            loanRepository.save(loan);
+            clientRepository.save(client);
+        }
+    }
+
+    private void processMortgageRepayments(BankState state, int day) {
+        List<Mortgage> mortgages = mortgageRepository.findBySlotIdAndUserId(state.getSlotId(), state.getUser().getId());
+        for (Mortgage mortgage : mortgages) {
+            if (mortgage.getNextPaymentDay() == null || mortgage.getMonthlyPayment() == null) {
+                continue;
+            }
+            if (mortgage.getStatus() != com.alkicorp.bankingsim.model.enums.MortgageStatus.ACCEPTED) {
+                continue;
+            }
+            if (day < mortgage.getNextPaymentDay()) {
+                continue;
+            }
+            Client client = mortgage.getClient();
+            BigDecimal amountDue = mortgage.getMonthlyPayment();
+            BigDecimal payAmount = client.getCheckingBalance().min(amountDue);
+            Instant now = Instant.now(clock);
+            if (payAmount.compareTo(BigDecimal.ZERO) > 0) {
+                client.setCheckingBalance(client.getCheckingBalance().subtract(payAmount));
+                Transaction tx = new Transaction();
+                tx.setClient(client);
+                tx.setType(TransactionType.MORTGAGE_PAYMENT);
+                tx.setAmount(payAmount.setScale(2, RoundingMode.HALF_UP));
+                tx.setGameDay(day);
+                tx.setCreatedAt(now);
+                transactionRepository.save(tx);
+                state.setLiquidCash(state.getLiquidCash().add(payAmount));
+                mortgage.setLastPaymentStatus(payAmount.compareTo(amountDue) >= 0 ? "PAID" : "PARTIAL");
+                if (payAmount.compareTo(amountDue) < 0) {
+                    mortgage.setMissedPayments(mortgage.getMissedPayments() + 1);
+                }
+            } else {
+                mortgage.setLastPaymentStatus("MISSED");
+                mortgage.setMissedPayments(mortgage.getMissedPayments() + 1);
+            }
+            mortgage.setNextPaymentDay(day + 30);
+            mortgage.setUpdatedAt(now);
+            mortgageRepository.save(mortgage);
+            clientRepository.save(client);
+        }
     }
 
     private void recordInvestmentEvent(int slotId, User user, InvestmentEventType type, BigDecimal amount, int gameDay) {

@@ -1,6 +1,5 @@
 package com.alkicorp.bankingsim.web;
 
-import com.alkicorp.bankingsim.model.BankState;
 import com.alkicorp.bankingsim.service.ChartService;
 import com.alkicorp.bankingsim.service.InvestmentService;
 import com.alkicorp.bankingsim.web.dto.ActivityChartResponse;
@@ -26,41 +25,17 @@ public class BankExtrasController {
 
     @GetMapping("/investments/sp500")
     public InvestmentStateResponse getInvestmentState(@PathVariable int slotId) {
-        BankState state = investmentService.getInvestmentState(slotId);
-        return InvestmentStateResponse.builder()
-            .liquidCash(state.getLiquidCash())
-            .investedSp500(state.getInvestedSp500())
-            .sp500Price(state.getSp500Price())
-            .nextDividendDay(state.getNextDividendDay())
-            .nextGrowthDay(state.getNextGrowthDay())
-            .gameDay(state.getGameDay())
-            .build();
+        return investmentService.getInvestmentStateResponse(slotId);
     }
 
     @PostMapping("/investments/sp500/invest")
     public InvestmentStateResponse invest(@PathVariable int slotId, @Valid @RequestBody MoneyRequest request) {
-        BankState state = investmentService.investInSp500(slotId, request.getAmount());
-        return InvestmentStateResponse.builder()
-            .liquidCash(state.getLiquidCash())
-            .investedSp500(state.getInvestedSp500())
-            .sp500Price(state.getSp500Price())
-            .nextDividendDay(state.getNextDividendDay())
-            .nextGrowthDay(state.getNextGrowthDay())
-            .gameDay(state.getGameDay())
-            .build();
+        return investmentService.investInSp500AndSummarize(slotId, request.getAmount());
     }
 
     @PostMapping("/investments/sp500/divest")
     public InvestmentStateResponse divest(@PathVariable int slotId, @Valid @RequestBody MoneyRequest request) {
-        BankState state = investmentService.divestFromSp500(slotId, request.getAmount());
-        return InvestmentStateResponse.builder()
-            .liquidCash(state.getLiquidCash())
-            .investedSp500(state.getInvestedSp500())
-            .sp500Price(state.getSp500Price())
-            .nextDividendDay(state.getNextDividendDay())
-            .nextGrowthDay(state.getNextGrowthDay())
-            .gameDay(state.getGameDay())
-            .build();
+        return investmentService.divestFromSp500AndSummarize(slotId, request.getAmount());
     }
 
     @GetMapping("/charts/clients")

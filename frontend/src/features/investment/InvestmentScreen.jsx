@@ -130,6 +130,50 @@ export default function InvestmentScreen() {
           </p>
         </div>
 
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="border p-3 rounded bg-gray-100">
+            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+              <span className="btn-icon">🧾</span> Investment History
+            </h3>
+            {!investmentState?.history?.length && <p className="text-xs text-gray-500">No investment events yet.</p>}
+            <ul className="text-xs max-h-48 overflow-y-auto space-y-1">
+              {investmentState?.history?.map((event, idx) => (
+                <li key={`${event.createdAt}-${idx}`} className="flex justify-between border-b pb-1">
+                  <span className="font-semibold">{event.type}</span>
+                  <span>${formatCurrency(Number(event.amount))} • {event.asset} • {getGameDateString(event.gameDay)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="border p-3 rounded bg-gray-100">
+            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+              <span className="btn-icon">💵</span> Repayment Income
+            </h3>
+            <div className="text-xs grid grid-cols-2 gap-2 mb-2">
+              <div className="p-2 rounded bg-white border">
+                <p className="text-gray-500">This month</p>
+                <p className="font-semibold">${formatCurrency(Number(investmentState?.repaymentIncomeCurrentMonth || 0))}</p>
+              </div>
+              <div className="p-2 rounded bg-white border">
+                <p className="text-gray-500">All time</p>
+                <p className="font-semibold">${formatCurrency(Number(investmentState?.repaymentIncomeTotal || 0))}</p>
+              </div>
+            </div>
+            {!investmentState?.repaymentIncome?.length && <p className="text-xs text-gray-500">No repayments recorded yet.</p>}
+            <ul className="text-xs max-h-48 overflow-y-auto space-y-1">
+              {investmentState?.repaymentIncome?.map((item, idx) => (
+                <li key={`${item.createdAt}-${idx}`} className="flex justify-between border-b pb-1">
+                  <span className="font-semibold">{item.clientName}</span>
+                  <span>
+                    ${formatCurrency(Number(item.amount))} • {item.type} • {getGameDateString(item.gameDay)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
         <Link className="bw-button mt-2 self-center inline-block" to="/bank">
           <span className="btn-icon">🏦</span> Back to Bank View
         </Link>

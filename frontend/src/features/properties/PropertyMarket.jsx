@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useLocation } from 'react-router-dom'
 import Panel from '../../components/Panel.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useSlot } from '../../providers/SlotProvider.jsx'
@@ -12,6 +13,7 @@ import PropertyImage from '../../components/PropertyImage.jsx'
 
 export default function PropertyMarket() {
   const { currentSlot, selectedClientId, setCurrentSlot, setSelectedClientId } = useSlot()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const productsQuery = useAllAvailableProducts(true)
   const mortgagesQuery = useMortgages(currentSlot, true)
@@ -19,6 +21,18 @@ export default function PropertyMarket() {
   const [mortgageTermYears, setMortgageTermYears] = useState(30)
   const [mortgageDownPayment, setMortgageDownPayment] = useState('')
   const [error, setError] = useState('')
+
+  // If we navigated here from a specific client page, carry that selection into context.
+  useEffect(() => {
+    const navClientId = location.state?.clientId != null ? Number(location.state.clientId) : null
+    const navSlotId = location.state?.slotId != null ? Number(location.state.slotId) : null
+    if (navSlotId && navSlotId !== currentSlot) {
+      setCurrentSlot(navSlotId)
+    }
+    if (navClientId && navClientId !== selectedClientId) {
+      setSelectedClientId(navClientId)
+    }
+  }, [location.state, currentSlot, selectedClientId, setCurrentSlot, setSelectedClientId])
 
   const mortgages = mortgagesQuery.data || []
   const properties = productsQuery.data || []

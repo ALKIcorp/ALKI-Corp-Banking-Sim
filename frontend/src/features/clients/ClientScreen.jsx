@@ -28,6 +28,8 @@ export default function ClientScreen() {
   const [selectedRentalId, setSelectedRentalId] = useState('')
   const [error, setError] = useState('')
   const [showTransactions, setShowTransactions] = useState(false)
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('ALL')
+  const [transactionDateOrder, setTransactionDateOrder] = useState('DESC')
 
   const depositTypes = useMemo(
     () =>
@@ -41,6 +43,16 @@ export default function ClientScreen() {
       ]),
     []
   )
+
+  const getTypeLabel = (type) => {
+    if (type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
+    if (type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
+    if (type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
+    if (type === 'PROPERTY_SALE') return 'Property Sale'
+    if (type === 'PAYROLL_DEPOSIT') return 'Payroll Deposit'
+    if (type === 'SAVINGS_DEPOSIT') return 'Savings Deposit'
+    return type.charAt(0) + type.slice(1).toLowerCase()
+  }
 
   const clientsQuery = useClients(currentSlot, true)
   const clients = clientsQuery.data || []
@@ -177,6 +189,60 @@ export default function ClientScreen() {
   const rentals = rentalsQuery.data || []
   const living = livingQuery.data || null
 
+  const monthToDateCashflow = useMemo(() => {
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
+    let income = 0
+    let spending = 0
+
+    transactions.forEach((tx) => {
+      const created = new Date(tx.createdAt)
+      if (created >= start && created < end) {
+        const amount = Number(tx.amount || 0)
+        if (depositTypes.has(tx.type)) {
+          income += amount
+        } else {
+          spending += amount
+        }
+      }
+    })
+
+    const net = income - spending
+    const spendingVsIncomePct = income > 0 ? (spending / income) * 100 : 0
+
+    return {
+      monthLabel: now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      start,
+      end,
+      income,
+      spending,
+      net,
+      spendingVsIncomePct,
+    }
+  }, [depositTypes, transactions])
+
+  const transactionTypeOptions = useMemo(() => {
+    const uniqueTypes = new Set(transactions.map((tx) => tx.type))
+    return ['ALL', ...Array.from(uniqueTypes).sort()]
+  }, [transactions])
+
+  const filteredTransactions = useMemo(() => {
+    const filtered =
+      transactionTypeFilter === 'ALL'
+        ? transactions
+        : transactions.filter((tx) => tx.type === transactionTypeFilter)
+
+    const sorter = (a, b) => {
+      const aDate = new Date(a.createdAt)
+      const bDate = new Date(b.createdAt)
+      return transactionDateOrder === 'DESC' ? bDate - aDate : aDate - bDate
+    }
+
+    return [...filtered].sort(sorter)
+  }, [transactionDateOrder, transactionTypeFilter, transactions])
+
   const totalWithdrawnToday = useMemo(() => {
     const today = transactions.filter((tx) => tx.type === 'WITHDRAWAL' && tx.gameDay === selectedClient?.gameDay)
     return today.reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
@@ -286,13 +352,51 @@ export default function ClientScreen() {
             </div>
           </div>
         </div>
+        <div className="mt-2 p-3 rounded border bg-gray-50">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+            <span>Month-to-date cashflow</span>
+            <span>{monthToDateCashflow.monthLabel}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-sm mb-2">
+            <div>
+              <div className="text-gray-500 text-[11px] uppercase">Income</div>
+              <div className="font-semibold text-green-700">${formatCurrency(monthToDateCashflow.income)}</div>
+            </div>
+            <div>
+              <div className="text-gray-500 text-[11px] uppercase">Spending</div>
+              <div className="font-semibold text-red-700">${formatCurrency(monthToDateCashflow.spending)}</div>
+            </div>
+            <div>
+              <div className="text-gray-500 text-[11px] uppercase">Net</div>
+              <div className={`font-semibold ${monthToDateCashflow.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                ${formatCurrency(monthToDateCashflow.net)}
+              </div>
+            </div>
+          </div>
+          <div className="text-[11px] text-gray-500 mb-1">
+            Spending vs income: {monthToDateCashflow.spendingVsIncomePct.toFixed(1)}%
+          </div>
+          <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
+            <div
+              className={`h-2 ${monthToDateCashflow.spendingVsIncomePct <= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+              style={{ width: `${Math.min(monthToDateCashflow.spendingVsIncomePct, 160)}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-gray-500 mt-1">
+            Window: {monthToDateCashflow.start.toLocaleDateString()} – {monthToDateCashflow.end.toLocaleDateString()} (resets on the 1st; live updates with new transactions)
+          </p>
+        </div>
         <div className="dual-action-card dual-action-card-left mb-4">
           <Link className="dual-action-option dual-action-option-loan" to="/applications">
             <div className="dual-action-title">Apply For Loan</div>
             <div className="dual-action-subtitle">Start a new loan request</div>
           </Link>
           <div className="dual-action-divider" aria-hidden="true" />
-          <Link className="dual-action-option dual-action-option-properties" to="/properties">
+          <Link
+            className="dual-action-option dual-action-option-properties"
+            to="/properties"
+            state={{ clientId: Number(clientId), slotId: currentSlot }}
+          >
             <div className="dual-action-title">View Properties For Sale</div>
             <div className="dual-action-subtitle">Browse listings and apply for mortgages</div>
           </Link>
@@ -474,21 +578,37 @@ export default function ClientScreen() {
               View All
             </button>
           </h4>
+          <div className="flex flex-wrap gap-2 mb-2 items-center">
+            <select
+              className="bw-input flex-1 min-w-[140px]"
+              value={transactionTypeFilter}
+              onChange={(e) => setTransactionTypeFilter(e.target.value)}
+            >
+              {transactionTypeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {type === 'ALL' ? 'All types' : getTypeLabel(type)}
+                </option>
+              ))}
+            </select>
+            <select
+              className="bw-input flex-1 min-w-[140px]"
+              value={transactionDateOrder}
+              onChange={(e) => setTransactionDateOrder(e.target.value)}
+            >
+              <option value="DESC">Newest first</option>
+              <option value="ASC">Oldest first</option>
+            </select>
+          </div>
           <div id="client-log-area" className="log-area">
             {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
-            {transactions.map((tx) => {
+            {transactions.length > 0 && !filteredTransactions.length && (
+              <p className="text-xs text-gray-500">No transactions match the selected filters.</p>
+            )}
+            {filteredTransactions.map((tx) => {
               const isDeposit = depositTypes.has(tx.type)
               const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
               const typeSymbol = isDeposit ? '➕' : '➖'
-              const typeLabel = (() => {
-                if (tx.type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
-                if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
-                if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
-                if (tx.type === 'PROPERTY_SALE') return 'Property Sale'
-                if (tx.type === 'PAYROLL_DEPOSIT') return 'Payroll Deposit'
-                if (tx.type === 'SAVINGS_DEPOSIT') return 'Savings Deposit'
-                return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
-              })()
+              const typeLabel = getTypeLabel(tx.type)
               return (
                 <div className="log-entry" key={tx.id}>
                   <span className="text-gray-500">
@@ -516,21 +636,37 @@ export default function ClientScreen() {
 
       {showTransactions && (
         <Modal title="Transaction History" onClose={() => setShowTransactions(false)}>
+          <div className="flex flex-wrap gap-2 mb-2 items-center">
+            <select
+              className="bw-input flex-1 min-w-[160px]"
+              value={transactionTypeFilter}
+              onChange={(e) => setTransactionTypeFilter(e.target.value)}
+            >
+              {transactionTypeOptions.map((type) => (
+                <option key={`modal-${type}`} value={type}>
+                  {type === 'ALL' ? 'All types' : getTypeLabel(type)}
+                </option>
+              ))}
+            </select>
+            <select
+              className="bw-input flex-1 min-w-[160px]"
+              value={transactionDateOrder}
+              onChange={(e) => setTransactionDateOrder(e.target.value)}
+            >
+              <option value="DESC">Newest first</option>
+              <option value="ASC">Oldest first</option>
+            </select>
+          </div>
           <div className="modal-client-list border p-2 rounded bg-gray-100">
             {!transactions.length && <p className="text-xs text-gray-500">No transactions yet.</p>}
-            {transactions.map((tx) => {
+            {transactions.length > 0 && !filteredTransactions.length && (
+              <p className="text-xs text-gray-500">No transactions match the selected filters.</p>
+            )}
+            {filteredTransactions.map((tx) => {
               const isDeposit = depositTypes.has(tx.type)
               const typeClass = isDeposit ? 'log-type-deposit' : 'log-type-withdrawal'
               const typeSymbol = isDeposit ? '➕' : '➖'
-              const typeLabel = (() => {
-                if (tx.type === 'LOAN_DISBURSEMENT') return 'Loan Disbursement'
-                if (tx.type === 'MORTGAGE_DOWN_PAYMENT') return 'Mortgage Down Deposit'
-                if (tx.type === 'MORTGAGE_DOWN_PAYMENT_FUNDING') return 'Mortgage Down Deposit Funding'
-                if (tx.type === 'PROPERTY_SALE') return 'Property Sale'
-                if (tx.type === 'PAYROLL_DEPOSIT') return 'Payroll Deposit'
-                if (tx.type === 'SAVINGS_DEPOSIT') return 'Savings Deposit'
-                return tx.type.charAt(0) + tx.type.slice(1).toLowerCase()
-              })()
+              const typeLabel = getTypeLabel(tx.type)
               return (
                 <div className="log-entry" key={`modal-${tx.id}`}>
                   <span className="text-gray-500">
