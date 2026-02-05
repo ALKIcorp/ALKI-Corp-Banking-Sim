@@ -28,4 +28,5 @@ public class ClientResponse {
     Boolean bankrupt;
     Double bankruptUntil;
     String purchasingBlockReason;
+    Double gameDay;
 }

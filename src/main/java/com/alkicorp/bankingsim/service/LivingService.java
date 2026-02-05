@@ -8,7 +8,6 @@ import com.alkicorp.bankingsim.model.Product;
 import com.alkicorp.bankingsim.model.Rental;
 import com.alkicorp.bankingsim.model.enums.LivingType;
 import com.alkicorp.bankingsim.repository.ClientLivingRepository;
-import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.ProductRepository;
 import com.alkicorp.bankingsim.repository.RentalRepository;
 import java.math.BigDecimal;
@@ -24,7 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class LivingService {
 
-    private final ClientRepository clientRepository;
+    private final ClientService clientService;
     private final ClientLivingRepository clientLivingRepository;
     private final RentalRepository rentalRepository;
     private final ProductRepository productRepository;
@@ -34,21 +33,18 @@ public class LivingService {
 
     @Transactional(readOnly = true)
     public ClientLiving getLiving(int slotId, Long clientId) {
-        User user = currentUserService.getCurrentUser();
-        clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        clientService.getClient(slotId, clientId);
         return clientLivingRepository.findByClientIdAndSlotId(clientId, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Living selection not set"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Living selection not set"));
     }
 
     @Transactional
     public ClientLiving assignRental(int slotId, Long clientId, Long rentalId) {
-        User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         Rental rental = rentalRepository.findById(rentalId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rental not found"));
-        ClientLiving living = clientLivingRepository.findByClientIdAndSlotId(clientId, slotId).orElse(new ClientLiving());
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rental not found"));
+        ClientLiving living = clientLivingRepository.findByClientIdAndSlotId(clientId, slotId)
+                .orElse(new ClientLiving());
         living.setClient(client);
         living.setSlotId(slotId);
         living.setLivingType(LivingType.RENTAL);
@@ -63,12 +59,11 @@ public class LivingService {
 
     @Transactional
     public ClientLiving assignOwnedProperty(int slotId, Long clientId, Long propertyId) {
-        User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         Product product = productRepository.findByIdAndSlotId(propertyId, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Property not found"));
-        ClientLiving living = clientLivingRepository.findByClientIdAndSlotId(clientId, slotId).orElse(new ClientLiving());
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Property not found"));
+        ClientLiving living = clientLivingRepository.findByClientIdAndSlotId(clientId, slotId)
+                .orElse(new ClientLiving());
         living.setClient(client);
         living.setSlotId(slotId);
         living.setLivingType(LivingType.OWNED_PROPERTY);
@@ -84,7 +79,7 @@ public class LivingService {
     private int computeNextRentDay(int slotId) {
         User user = currentUserService.getCurrentUser();
         double gameDay = simulationService.getAndAdvanceState(user, slotId)
-            .map(s -> s.getGameDay()).orElse(0d);
+                .map(s -> s.getGameDay()).orElse(0d);
         int dayOfMonth = ((int) Math.floor(gameDay) % 30) + 1;
         int daysUntilFirst = dayOfMonth == 1 ? 30 : (31 - dayOfMonth);
         return (int) Math.floor(gameDay) + daysUntilFirst;

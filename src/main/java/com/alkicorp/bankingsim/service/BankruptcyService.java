@@ -1,7 +1,5 @@
 package com.alkicorp.bankingsim.service;
 
-import com.alkicorp.bankingsim.auth.model.User;
-import com.alkicorp.bankingsim.auth.service.CurrentUserService;
 import com.alkicorp.bankingsim.model.BankruptcyApplication;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.enums.BankruptcyStatus;
@@ -10,26 +8,32 @@ import com.alkicorp.bankingsim.repository.ClientRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-@RequiredArgsConstructor
 public class BankruptcyService {
 
     private final BankruptcyApplicationRepository bankruptcyApplicationRepository;
     private final ClientRepository clientRepository;
-    private final CurrentUserService currentUserService;
+    private final ClientService clientService;
     private final Clock clock = Clock.systemUTC();
+
+    public BankruptcyService(
+            BankruptcyApplicationRepository bankruptcyApplicationRepository,
+            ClientRepository clientRepository,
+            @Lazy ClientService clientService) {
+        this.bankruptcyApplicationRepository = bankruptcyApplicationRepository;
+        this.clientRepository = clientRepository;
+        this.clientService = clientService;
+    }
 
     @Transactional
     public BankruptcyApplication file(int slotId, Long clientId, String notes) {
-        User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         BankruptcyApplication app = new BankruptcyApplication();
         app.setSlotId(slotId);
         app.setClient(client);
@@ -42,7 +46,8 @@ public class BankruptcyService {
     @Transactional
     public BankruptcyApplication decide(Long applicationId, BankruptcyStatus status) {
         BankruptcyApplication app = bankruptcyApplicationRepository.findById(applicationId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bankruptcy application not found"));
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bankruptcy application not found"));
         app.setStatus(status);
         app.setDecidedAt(Instant.now(clock));
         if (status == BankruptcyStatus.APPROVED) {

@@ -12,6 +12,7 @@ public class MortgageResponse {
     int slotId;
     Long clientId;
     Long productId;
+    String productName;
     BigDecimal propertyPrice;
     BigDecimal downPayment;
     BigDecimal loanAmount;

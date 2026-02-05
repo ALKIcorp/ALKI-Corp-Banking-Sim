@@ -45,8 +45,9 @@ public class ClientService {
         }
         User user = currentUserService.getCurrentUser();
         BankState state = simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
         Client client = new Client();
         client.setBankState(state);
         client.setSlotId(slotId);
@@ -75,9 +76,12 @@ public class ClientService {
         User user = currentUserService.getCurrentUser();
         // Advance the simulation so payroll/spending post before returning balances.
         simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
-        return clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
+        return user.isAdminStatus()
+                ? clientRepository.findBySlotId(slotId)
+                : clientRepository.findBySlotIdAndBankStateUserId(slotId, user.getId());
     }
 
     @Transactional(readOnly = true)
@@ -92,10 +96,13 @@ public class ClientService {
     public Client getClient(int slotId, Long clientId) {
         User user = currentUserService.getCurrentUser();
         simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
-        return clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
+        var clientOpt = user.isAdminStatus()
+                ? clientRepository.findByIdAndSlotId(clientId, slotId)
+                : clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId());
+        return clientOpt.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
     }
 
     @Transactional
@@ -108,15 +115,17 @@ public class ClientService {
         validateAmount(amount, false);
         User user = currentUserService.getCurrentUser();
         BankState state = simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
         if (amount.compareTo(client.getCheckingBalance()) > 0) {
             throw new ValidationException("Insufficient funds.");
         }
         BigDecimal remainingLimit = SimulationConstants.DAILY_WITHDRAWAL_LIMIT.subtract(client.getDailyWithdrawn());
         if (amount.compareTo(remainingLimit) > 0) {
-            throw new ValidationException("Exceeds daily limit. You can withdraw $" + formatCurrency(remainingLimit) + " more today.");
+            throw new ValidationException(
+                    "Exceeds daily limit. You can withdraw $" + formatCurrency(remainingLimit) + " more today.");
         }
         client.setCheckingBalance(client.getCheckingBalance().subtract(amount));
         client.setDailyWithdrawn(client.getDailyWithdrawn().add(amount));
@@ -125,12 +134,14 @@ public class ClientService {
     }
 
     @Transactional
-    public Transaction creditAccount(int slotId, Long clientId, BigDecimal amount, TransactionType type, boolean enforceUpperLimit) {
+    public Transaction creditAccount(int slotId, Long clientId, BigDecimal amount, TransactionType type,
+            boolean enforceUpperLimit) {
         validateAmount(amount, enforceUpperLimit);
         User user = currentUserService.getCurrentUser();
         BankState state = simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
         client.setCheckingBalance(client.getCheckingBalance().add(amount));
         clientRepository.save(client);
@@ -146,8 +157,9 @@ public class ClientService {
     public List<Transaction> getTransactions(Long clientId, int slotId) {
         User user = currentUserService.getCurrentUser();
         simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
         return transactionRepository.findByClientOrderByCreatedAtDesc(client);
     }

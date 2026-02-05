@@ -101,8 +101,18 @@ export default function InvestmentScreen() {
                 onChange={(event) => setInvestAmount(event.target.value)}
               />
             </div>
-            <button className="bw-button" onClick={() => investMutation.mutate({ slotId: currentSlot, amount: Number(investAmount) })} disabled={investMutation.isPending}>
-              <span className="btn-icon">📈</span> Invest
+            <button
+              className="bw-button"
+              onClick={() => {
+                if (!investAmount || Number(investAmount) <= 0) {
+                  setError('Please enter a valid investment amount.');
+                  return;
+                }
+                investMutation.mutate({ slotId: currentSlot, amount: Number(investAmount) });
+              }}
+              disabled={investMutation.isPending || !investAmount || Number(investAmount) <= 0}
+            >
+              <span className="btn-icon">{investMutation.isPending ? '⏳' : '📈'}</span> {investMutation.isPending ? 'Investing...' : 'Invest'}
             </button>
           </div>
           <div className="flex gap-2 mt-1 items-end">
@@ -121,8 +131,18 @@ export default function InvestmentScreen() {
                 onChange={(event) => setDivestAmount(event.target.value)}
               />
             </div>
-            <button className="bw-button" onClick={() => divestMutation.mutate({ slotId: currentSlot, amount: Number(divestAmount) })} disabled={divestMutation.isPending}>
-              <span className="btn-icon">📉</span> Divest
+            <button
+              className="bw-button"
+              onClick={() => {
+                if (!divestAmount || Number(divestAmount) <= 0) {
+                  setError('Please enter a valid divestment amount.');
+                  return;
+                }
+                divestMutation.mutate({ slotId: currentSlot, amount: Number(divestAmount) });
+              }}
+              disabled={divestMutation.isPending || !divestAmount || Number(divestAmount) <= 0}
+            >
+              <span className="btn-icon">{divestMutation.isPending ? '⏳' : '📉'}</span> {divestMutation.isPending ? 'Divesting...' : 'Divest'}
             </button>
           </div>
           <p id="investment-error-message" className="text-red-600 text-xs mt-2 text-center">

@@ -27,6 +27,7 @@ public class JobService {
     private final JobRepository jobRepository;
     private final ClientJobRepository clientJobRepository;
     private final ClientRepository clientRepository;
+    private final ClientService clientService;
     private final SimulationService simulationService;
     private final CurrentUserService currentUserService;
     private final Clock clock = Clock.systemUTC();
@@ -48,18 +49,18 @@ public class JobService {
     @Transactional
     public ClientJob assignJob(int slotId, Long clientId, Long jobId, boolean primary) {
         User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         Job job = jobRepository.findById(jobId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
         ClientJob cj = new ClientJob();
         cj.setClient(client);
         cj.setSlotId(slotId);
         cj.setJob(job);
         cj.setStartDate(Instant.now(clock));
         BankState state = simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
         cj.setNextPayday(state.getGameDay() + job.getPayCycleDays());
         cj.setPrimary(primary);
         cj.setCreatedAt(Instant.now(clock));
@@ -72,11 +73,19 @@ public class JobService {
             });
         }
         ClientJob saved = clientJobRepository.save(cj);
-        // cache monthly income on client
-        BigDecimal monthlyIncome = job.getAnnualSalary().divide(BigDecimal.valueOf(12), 2, java.math.RoundingMode.HALF_UP);
-        client.setMonthlyIncomeCache(monthlyIncome);
-        clientRepository.save(client);
+        recalculateMonthlyIncome(client);
         return saved;
+    }
+
+    private void recalculateMonthlyIncome(Client client) {
+        List<ClientJob> jobs = clientJobRepository.findByClientId(client.getId());
+        BigDecimal totalMonthlyIncome = jobs.stream()
+                .map(cj -> cj.getJob().getAnnualSalary())
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(SimulationConstants.DAYS_PER_YEAR), 2, java.math.RoundingMode.HALF_UP);
+
+        client.setMonthlyIncomeCache(totalMonthlyIncome);
+        clientRepository.save(client);
     }
 
     private void validateJob(Job job) {

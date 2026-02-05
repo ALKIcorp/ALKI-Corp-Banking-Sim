@@ -31,8 +31,8 @@ public class ClientController {
     @GetMapping
     public List<ClientResponse> listClients(@PathVariable int slotId) {
         return clientService.getClients(slotId).stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     @PostMapping
@@ -55,46 +55,48 @@ public class ClientController {
     @GetMapping("/{clientId}/properties")
     public List<ProductResponse> getOwnedProperties(@PathVariable int slotId, @PathVariable Long clientId) {
         return productService.getOwnedProducts(slotId, clientId).stream()
-            .map(product -> ProductResponse.builder()
-                .id(product.getId())
-                .slotId(product.getSlotId())
-                .name(product.getName())
-                .price(product.getPrice())
-                .description(product.getDescription())
-                .rooms(product.getRooms())
-                .sqft2(product.getSqft2())
-                .imageUrl(product.getImageUrl())
-                .status(product.getStatus().name())
-                .ownerClientId(product.getOwnerClient() == null ? null : product.getOwnerClient().getId())
-                .createdAt(product.getCreatedAt())
-                .build())
-            .collect(Collectors.toList());
+                .map(product -> ProductResponse.builder()
+                        .id(product.getId())
+                        .slotId(product.getSlotId())
+                        .name(product.getName())
+                        .price(product.getPrice())
+                        .description(product.getDescription())
+                        .rooms(product.getRooms())
+                        .sqft2(product.getSqft2())
+                        .imageUrl(product.getImageUrl())
+                        .status(product.getStatus().name())
+                        .ownerClientId(product.getOwnerClient() == null ? null : product.getOwnerClient().getId())
+                        .createdAt(product.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     @PostMapping("/{clientId}/deposit")
-    public TransactionResponse deposit(@PathVariable int slotId, @PathVariable Long clientId, @Valid @RequestBody MoneyRequest request) {
+    public TransactionResponse deposit(@PathVariable int slotId, @PathVariable Long clientId,
+            @Valid @RequestBody MoneyRequest request) {
         Transaction tx = clientService.deposit(slotId, clientId, request.getAmount());
         return toResponse(tx);
     }
 
     @PostMapping("/{clientId}/withdraw")
-    public TransactionResponse withdraw(@PathVariable int slotId, @PathVariable Long clientId, @Valid @RequestBody MoneyRequest request) {
+    public TransactionResponse withdraw(@PathVariable int slotId, @PathVariable Long clientId,
+            @Valid @RequestBody MoneyRequest request) {
         Transaction tx = clientService.withdraw(slotId, clientId, request.getAmount());
         return toResponse(tx);
     }
 
     @PostMapping("/{clientId}/mortgage-funding")
     public TransactionResponse fundMortgageDownPayment(@PathVariable int slotId,
-                                                       @PathVariable Long clientId,
-                                                       @Valid @RequestBody MoneyRequest request) {
+            @PathVariable Long clientId,
+            @Valid @RequestBody MoneyRequest request) {
         Transaction tx = clientService.fundMortgageDownPayment(slotId, clientId, request.getAmount());
         return toResponse(tx);
     }
 
     @PostMapping("/{clientId}/properties/{productId}/sell")
     public TransactionResponse sellProperty(@PathVariable int slotId,
-                                            @PathVariable Long clientId,
-                                            @PathVariable Long productId) {
+            @PathVariable Long clientId,
+            @PathVariable Long productId) {
         Transaction tx = productService.sellOwnedProperty(slotId, clientId, productId);
         return toResponse(tx);
     }
@@ -102,37 +104,43 @@ public class ClientController {
     private ClientResponse toResponse(Client client) {
         var primaryJobOpt = clientService.getPrimaryJob(client);
         return ClientResponse.builder()
-            .id(client.getId())
-            .name(client.getName())
-            .checkingBalance(client.getCheckingBalance())
-            .savingsBalance(client.getSavingsBalance())
-            .dailyWithdrawn(client.getDailyWithdrawn())
-            .monthlyIncome(client.getMonthlyIncomeCache())
-            .monthlyMandatory(client.getMonthlyMandatoryCache())
-            .monthlyDiscretionary(client.getMonthlyDiscretionaryTarget())
-            .cardNumber(client.getCardNumber())
-            .cardExpiry(client.getCardExpiry())
-            .cardCvv(client.getCardCvv())
-            .employmentStatus(client.getEmploymentStatus())
-            .primaryJobId(primaryJobOpt.map(cj -> cj.getJob().getId()).orElse(null))
-            .primaryJobTitle(primaryJobOpt.map(cj -> cj.getJob().getTitle()).orElse(null))
-            .primaryJobEmployer(primaryJobOpt.map(cj -> cj.getJob().getEmployer()).orElse(null))
-            .primaryJobAnnualSalary(primaryJobOpt.map(cj -> cj.getJob().getAnnualSalary()).orElse(null))
-            .primaryJobPayCycleDays(primaryJobOpt.map(cj -> cj.getJob().getPayCycleDays()).orElse(null))
-            .primaryJobStartDate(primaryJobOpt.map(com.alkicorp.bankingsim.model.ClientJob::getStartDate).orElse(null))
-            .bankrupt(client.getBankrupt())
-            .bankruptUntil(client.getBankruptUntil())
-            .purchasingBlockReason(client.getPurchasingBlockReason())
-            .build();
+                .id(client.getId())
+                .name(client.getName())
+                .checkingBalance(client.getCheckingBalance())
+                .savingsBalance(client.getSavingsBalance())
+                .dailyWithdrawn(client.getDailyWithdrawn())
+                .monthlyIncome(client.getMonthlyIncomeCache())
+                .monthlyMandatory(client.getMonthlyMandatoryCache())
+                .monthlyDiscretionary(client.getMonthlyDiscretionaryTarget())
+                .cardNumber(client.getCardNumber())
+                .cardExpiry(client.getCardExpiry())
+                .cardCvv(client.getCardCvv())
+                .employmentStatus(client.getEmploymentStatus())
+                .primaryJobId(primaryJobOpt.map(cj -> cj.getJob() != null ? cj.getJob().getId() : null).orElse(null))
+                .primaryJobTitle(
+                        primaryJobOpt.map(cj -> cj.getJob() != null ? cj.getJob().getTitle() : null).orElse(null))
+                .primaryJobEmployer(
+                        primaryJobOpt.map(cj -> cj.getJob() != null ? cj.getJob().getEmployer() : null).orElse(null))
+                .primaryJobAnnualSalary(primaryJobOpt
+                        .map(cj -> cj.getJob() != null ? cj.getJob().getAnnualSalary() : null).orElse(null))
+                .primaryJobPayCycleDays(primaryJobOpt
+                        .map(cj -> cj.getJob() != null ? cj.getJob().getPayCycleDays() : null).orElse(null))
+                .primaryJobStartDate(
+                        primaryJobOpt.map(com.alkicorp.bankingsim.model.ClientJob::getStartDate).orElse(null))
+                .bankrupt(client.getBankrupt())
+                .bankruptUntil(client.getBankruptUntil())
+                .purchasingBlockReason(client.getPurchasingBlockReason())
+                .gameDay(client.getBankState() != null ? client.getBankState().getGameDay() : null)
+                .build();
     }
 
     private TransactionResponse toResponse(Transaction tx) {
         return TransactionResponse.builder()
-            .id(tx.getId())
-            .type(tx.getType())
-            .amount(tx.getAmount())
-            .gameDay(tx.getGameDay())
-            .createdAt(tx.getCreatedAt())
-            .build();
+                .id(tx.getId())
+                .type(tx.getType())
+                .amount(tx.getAmount())
+                .gameDay(tx.getGameDay())
+                .createdAt(tx.getCreatedAt())
+                .build();
     }
 }

@@ -516,28 +516,28 @@ export default function ClientScreen() {
             {ownedProperties.map((property) => (
               <div key={property.id} className="property-card">
                 <PropertyImage src={property.imageUrl} alt={`${property.name} photo`} />
-              <div className="property-body">
-                <div className="property-title">{property.name}</div>
-                <div className="property-meta">
-                  {property.rooms} rooms • {property.sqft2} sqft
+                <div className="property-body">
+                  <div className="property-title">{property.name}</div>
+                  <div className="property-meta">
+                    {property.rooms} rooms • {property.sqft2} sqft
+                  </div>
+                  <div className="property-price">${formatCurrency(property.price)}</div>
+                  <button
+                    className="bw-button w-full mt-2"
+                    onClick={() =>
+                      sellPropertyMutation.mutate({
+                        slotId: currentSlot,
+                        clientId,
+                        productId: property.id,
+                      })
+                    }
+                    disabled={sellPropertyMutation.isPending}
+                  >
+                    Sell for ${formatCurrency(property.price)}
+                  </button>
                 </div>
-                <div className="property-price">${formatCurrency(property.price)}</div>
-                <button
-                  className="bw-button w-full mt-2"
-                  onClick={() =>
-                    sellPropertyMutation.mutate({
-                      slotId: currentSlot,
-                      clientId,
-                      productId: property.id,
-                    })
-                  }
-                  disabled={sellPropertyMutation.isPending}
-                >
-                  Sell for ${formatCurrency(property.price)}
-                </button>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         </div>
         <div className="transaction-log">
@@ -551,7 +551,7 @@ export default function ClientScreen() {
           </h4>
           <div className="flex flex-wrap gap-2 mb-2 items-center">
             <select
-              className="transaction-filter-select"
+              className="bw-select-small"
               value={transactionTypeFilter}
               onChange={(e) => setTransactionTypeFilter(e.target.value)}
             >
@@ -562,7 +562,7 @@ export default function ClientScreen() {
               ))}
             </select>
             <select
-              className="transaction-filter-select"
+              className="bw-select-small"
               value={transactionDateOrder}
               onChange={(e) => setTransactionDateOrder(e.target.value)}
             >

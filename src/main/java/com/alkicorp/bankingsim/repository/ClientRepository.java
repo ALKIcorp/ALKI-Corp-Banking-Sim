@@ -7,6 +7,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
     List<Client> findBySlotIdAndBankStateUserId(Integer slotId, Long userId);
+
     Optional<Client> findByIdAndSlotIdAndBankStateUserId(Long id, Integer slotId, Long userId);
+
     void deleteBySlotIdAndBankStateUserId(Integer slotId, Long userId);
+
+    List<Client> findBySlotId(Integer slotId);
+
+    Optional<Client> findByIdAndSlotId(Long id, Integer slotId);
 }

@@ -31,6 +31,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ClientRepository clientRepository;
+    private final ClientService clientService;
     private final BankStateRepository bankStateRepository;
     private final ClientLivingRepository clientLivingRepository;
     private final TransactionRepository transactionRepository;
@@ -61,7 +62,7 @@ public class ProductService {
         validateDraft(draft);
         User user = currentUserService.getCurrentUser();
         Product product = productRepository.findByIdAndSlotIdAndCreatedById(productId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
         product.setName(draft.getName().trim());
         product.setPrice(draft.getPrice());
         product.setDescription(draft.getDescription().trim());
@@ -78,7 +79,7 @@ public class ProductService {
     public void deleteProduct(int slotId, Long productId) {
         User user = currentUserService.getCurrentUser();
         Product product = productRepository.findByIdAndSlotIdAndCreatedById(productId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
         productRepository.delete(product);
     }
 
@@ -102,31 +103,29 @@ public class ProductService {
     public Product getProduct(int slotId, Long productId) {
         User user = currentUserService.getCurrentUser();
         return productRepository.findByIdAndSlotIdAndCreatedById(productId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
     }
 
     @Transactional(readOnly = true)
     public List<Product> getOwnedProducts(int slotId, Long clientId) {
-        User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         return productRepository.findByOwnerClientId(client.getId());
     }
 
     @Transactional
     public Transaction sellOwnedProperty(int slotId, Long clientId, Long productId) {
         User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         Product product = productRepository.findByIdAndSlotIdAndOwnerClientId(productId, slotId, client.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owned property not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owned property not found"));
         if (product.getStatus() != ProductStatus.OWNED) {
             throw new ValidationException("Property is not owned.");
         }
 
         BankState state = simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
 
         BigDecimal salePrice = product.getPrice();
         if (state.getLiquidCash().compareTo(salePrice) < 0) {

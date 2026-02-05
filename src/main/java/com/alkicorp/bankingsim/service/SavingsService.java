@@ -1,6 +1,5 @@
 package com.alkicorp.bankingsim.service;
 
-import com.alkicorp.bankingsim.auth.model.User;
 import com.alkicorp.bankingsim.auth.service.CurrentUserService;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.Transaction;
@@ -13,15 +12,14 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
 public class SavingsService {
 
+    private final ClientService clientService;
     private final ClientRepository clientRepository;
     private final TransactionRepository transactionRepository;
     private final SimulationService simulationService;
@@ -31,9 +29,7 @@ public class SavingsService {
     @Transactional
     public Transaction depositToSavings(int slotId, Long clientId, BigDecimal amount) {
         validateAmount(amount);
-        User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         if (amount.compareTo(client.getCheckingBalance()) > 0) {
             throw new ValidationException("Insufficient checking balance.");
         }
@@ -46,9 +42,7 @@ public class SavingsService {
     @Transactional
     public Transaction withdrawFromSavings(int slotId, Long clientId, BigDecimal amount) {
         validateAmount(amount);
-        User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         if (amount.compareTo(client.getSavingsBalance()) > 0) {
             throw new ValidationException("Insufficient savings balance.");
         }
@@ -60,7 +54,7 @@ public class SavingsService {
 
     private Transaction record(Client client, int slotId, BigDecimal amount, TransactionType type) {
         int gameDay = simulationService.getAndAdvanceState(currentUserService.getCurrentUser(), slotId)
-            .map(state -> (int) Math.floor(state.getGameDay())).orElse(0);
+                .map(state -> (int) Math.floor(state.getGameDay())).orElse(0);
         Transaction tx = new Transaction();
         tx.setClient(client);
         tx.setType(type);

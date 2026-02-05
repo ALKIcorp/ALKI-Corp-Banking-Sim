@@ -1,19 +1,11 @@
 package com.alkicorp.bankingsim.service;
 
 import com.alkicorp.bankingsim.model.Client;
-import com.alkicorp.bankingsim.model.ClientLiving;
-import com.alkicorp.bankingsim.model.Loan;
-import com.alkicorp.bankingsim.model.Mortgage;
 import com.alkicorp.bankingsim.model.SpendingCategory;
 import com.alkicorp.bankingsim.model.Transaction;
-import com.alkicorp.bankingsim.model.enums.LoanStatus;
-import com.alkicorp.bankingsim.model.enums.MortgageStatus;
 import com.alkicorp.bankingsim.model.enums.TransactionType;
-import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.ClientJobRepository;
-import com.alkicorp.bankingsim.repository.ClientLivingRepository;
-import com.alkicorp.bankingsim.repository.LoanRepository;
-import com.alkicorp.bankingsim.repository.MortgageRepository;
+import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.SpendingCategoryRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
 import java.math.BigDecimal;
@@ -21,7 +13,6 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,27 +27,26 @@ public class SpendingService {
     private final SpendingCategoryRepository spendingCategoryRepository;
     private final ClientRepository clientRepository;
     private final ClientJobRepository clientJobRepository;
-    private final ClientLivingRepository clientLivingRepository;
-    private final LoanRepository loanRepository;
-    private final MortgageRepository mortgageRepository;
     private final TransactionRepository transactionRepository;
+    private final MandatorySpendService mandatorySpendService;
     private final Clock clock = Clock.systemUTC();
     private final Random random = new Random();
 
     @Transactional
     public List<Transaction> generateSpending(int slotId, Long clientId) {
-        // Fallback entry point (e.g. legacy button). Derive the current game day from the client’s bank state.
+        // Fallback entry point (e.g. legacy button). Derive the current game day from
+        // the client’s bank state.
         Client client = clientRepository.findById(clientId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
         double bankGameDay = client.getBankState() != null && client.getBankState().getGameDay() != null
-            ? client.getBankState().getGameDay()
-            : 0d;
+                ? client.getBankState().getGameDay()
+                : 0d;
         return generateSpending(slotId, clientId, (int) Math.floor(bankGameDay));
     }
 
     public List<Transaction> generateSpending(int slotId, Long clientId, int gameDay) {
         Client client = clientRepository.findById(clientId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
 
         // Avoid double-charging the same simulated day
         if (transactionRepository.existsByClientIdAndTypeAndGameDay(clientId, TransactionType.SPENDING, gameDay)) {
@@ -64,7 +54,9 @@ public class SpendingService {
         }
 
         BigDecimal monthlyIncome = resolveMonthlyIncome(client);
-        BigDecimal mandatory = resolveMonthlyMandatory(client);
+        // Use central service for mandatory spend (loans, mortgages, rent)
+        BigDecimal mandatory = mandatorySpendService.recalcAndPersist(client);
+
         BigDecimal disposableCalc = monthlyIncome.subtract(mandatory);
         if (disposableCalc.compareTo(BigDecimal.ZERO) < 0) {
             disposableCalc = BigDecimal.ZERO;
@@ -73,10 +65,10 @@ public class SpendingService {
         List<SpendingCategory> categories = spendingCategoryRepository.findAllByOrderByIdAsc();
         BigDecimal disposable = disposableCalc;
         return categories.stream()
-            .filter(cat -> Boolean.TRUE.equals(cat.getDefaultActive()))
-            .map(cat -> spendInCategory(client, gameDay, disposable, cat))
-            .filter(t -> t != null)
-            .toList();
+                .filter(cat -> Boolean.TRUE.equals(cat.getDefaultActive()))
+                .map(cat -> spendInCategory(client, gameDay, disposable, cat))
+                .filter(t -> t != null)
+                .toList();
     }
 
     private Transaction spendInCategory(Client client, double gameDay, BigDecimal disposable, SpendingCategory cat) {
@@ -84,15 +76,18 @@ public class SpendingService {
             return null;
         }
         double basePct = cat.getMinPctIncome().doubleValue() +
-            random.nextDouble() * (cat.getMaxPctIncome().doubleValue() - cat.getMinPctIncome().doubleValue());
+                random.nextDouble() * (cat.getMaxPctIncome().doubleValue() - cat.getMinPctIncome().doubleValue());
         double variability = cat.getVariability() != null ? cat.getVariability().doubleValue() : 0d;
-        double swing = variability > 0 ? (random.nextDouble() * 2 * variability - variability) : 0d; // range [-var, +var]
+        double swing = variability > 0 ? (random.nextDouble() * 2 * variability - variability) : 0d; // range [-var,
+                                                                                                     // +var]
         double pct = Math.max(0d, basePct * (1 + swing));
         BigDecimal target = client.getMonthlyIncomeCache() != null
-            ? client.getMonthlyIncomeCache().multiply(BigDecimal.valueOf(pct))
-            : BigDecimal.ZERO;
-        BigDecimal daily = target.divide(BigDecimal.valueOf(30), 2, RoundingMode.HALF_UP);
-        BigDecimal amount = daily.min(client.getCheckingBalance());
+                ? client.getMonthlyIncomeCache().multiply(BigDecimal.valueOf(pct))
+                : BigDecimal.ZERO;
+
+        // In this simulation, 1 game day = 1 month (12 days per year).
+        // Therefore, the "monthly" target is the daily spend.
+        BigDecimal amount = target.min(client.getCheckingBalance());
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
         }
@@ -108,55 +103,22 @@ public class SpendingService {
     }
 
     /**
-     * Populate monthlyIncomeCache if missing by summing active jobs' annual salaries / 12.
-     * This keeps spending working even when the cache was never prefilled elsewhere.
+     * Populate monthlyIncomeCache if missing by summing active jobs' annual
+     * salaries / DAYS_PER_YEAR.
+     * This keeps spending working even when the cache was never prefilled
+     * elsewhere.
      */
     private BigDecimal resolveMonthlyIncome(Client client) {
         if (client.getMonthlyIncomeCache() != null) {
             return client.getMonthlyIncomeCache();
         }
         BigDecimal monthlyIncome = clientJobRepository.findByClientId(client.getId()).stream()
-            .map(cj -> cj.getJob().getAnnualSalary().divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(cj -> cj.getJob().getAnnualSalary().divide(BigDecimal.valueOf(SimulationConstants.DAYS_PER_YEAR),
+                        2,
+                        RoundingMode.HALF_UP))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         client.setMonthlyIncomeCache(monthlyIncome);
         clientRepository.save(client);
         return monthlyIncome;
-    }
-
-    /**
-     * Recompute mandatory monthly spend for the client from all active obligations:
-     * approved personal loans, accepted mortgages, and current rent. Nothing else is included.
-     */
-    private BigDecimal resolveMonthlyMandatory(Client client) {
-        BigDecimal total = BigDecimal.ZERO;
-
-        // Approved personal loans
-        for (Loan loan : loanRepository.findByClientId(client.getId())) {
-            if (loan.getStatus() == LoanStatus.APPROVED && loan.getMonthlyPayment() != null) {
-                total = total.add(loan.getMonthlyPayment());
-            }
-        }
-
-        // Accepted mortgages
-        for (Mortgage mortgage : mortgageRepository.findByClientId(client.getId())) {
-            if (mortgage.getStatus() == MortgageStatus.ACCEPTED && mortgage.getMonthlyPayment() != null) {
-                total = total.add(mortgage.getMonthlyPayment());
-            }
-        }
-
-        // Current rent (if renting)
-        ClientLiving living = clientLivingRepository
-            .findByClientIdAndSlotId(client.getId(), client.getSlotId())
-            .orElse(null);
-        if (living != null && living.getMonthlyRentCache() != null) {
-            total = total.add(living.getMonthlyRentCache());
-        }
-
-        total = total.setScale(2, RoundingMode.HALF_UP);
-        if (!Objects.equals(client.getMonthlyMandatoryCache(), total)) {
-            client.setMonthlyMandatoryCache(total);
-            clientRepository.save(client);
-        }
-        return total;
     }
 }

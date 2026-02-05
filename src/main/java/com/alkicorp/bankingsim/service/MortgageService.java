@@ -33,20 +33,21 @@ public class MortgageService {
     private final MortgageRepository mortgageRepository;
     private final ProductRepository productRepository;
     private final ClientRepository clientRepository;
+    private final ClientService clientService;
     private final TransactionRepository transactionRepository;
     private final CurrentUserService currentUserService;
     private final SimulationService simulationService;
     private final Clock clock = Clock.systemUTC();
 
     @Transactional
-    public Mortgage createMortgage(int slotId, Long clientId, Long productId, BigDecimal downPayment, Integer termYears) {
+    public Mortgage createMortgage(int slotId, Long clientId, Long productId, BigDecimal downPayment,
+            Integer termYears) {
         validateTerm(termYears);
         validateDownPayment(downPayment);
         User user = currentUserService.getCurrentUser();
-        Client client = clientRepository.findByIdAndSlotIdAndBankStateUserId(clientId, slotId, user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found"));
+        Client client = clientService.getClient(slotId, clientId);
         Product product = productRepository.findByIdAndSlotId(productId, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Property not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Property not found"));
         if (product.getStatus() != ProductStatus.AVAILABLE) {
             throw new ValidationException("Property is no longer available.");
         }
@@ -56,8 +57,9 @@ public class MortgageService {
         }
         BigDecimal loanAmount = price.subtract(downPayment);
         BankState bankState = simulationService.getAndAdvanceState(user, slotId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
         BigDecimal interestRate = bankState.getMortgageRate();
         Mortgage mortgage = new Mortgage();
         mortgage.setSlotId(slotId);
@@ -97,23 +99,25 @@ public class MortgageService {
     public Mortgage updateStatus(int slotId, Long mortgageId, MortgageStatus status) {
         User user = currentUserService.getCurrentUser();
         Mortgage mortgage = user.isAdminStatus()
-            ? mortgageRepository.findByIdAndSlotId(mortgageId, slotId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mortgage not found"))
-            : mortgageRepository.findByIdAndSlotIdAndUserId(mortgageId, slotId, user.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mortgage not found"));
+                ? mortgageRepository.findByIdAndSlotId(mortgageId, slotId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mortgage not found"))
+                : mortgageRepository.findByIdAndSlotIdAndUserId(mortgageId, slotId, user.getId())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mortgage not found"));
         if (mortgage.getStatus() != MortgageStatus.PENDING) {
             throw new ValidationException("Mortgage already processed.");
         }
+
+        Product product = mortgage.getProduct();
         if (status == MortgageStatus.ACCEPTED) {
-            Product product = mortgage.getProduct();
             if (product.getStatus() != ProductStatus.AVAILABLE) {
                 throw new ValidationException("Property is no longer available.");
             }
             Client client = mortgage.getClient();
             BigDecimal downPayment = mortgage.getDownPayment();
             BankState state = simulationService.getAndAdvanceState(user, slotId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId + "/start to initialize the slot."));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                    + "/start to initialize the slot."));
             if (downPayment.compareTo(BigDecimal.ZERO) > 0) {
                 if (downPayment.compareTo(client.getCheckingBalance()) > 0) {
                     throw new ValidationException("Not enough funds to purchase property.");
@@ -129,12 +133,19 @@ public class MortgageService {
             if (mortgage.getMonthlyPayment() == null) {
                 int months = mortgage.getTermYears() * 12;
                 BigDecimal monthlyPayment = months > 0
-                    ? mortgage.getLoanAmount().divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP)
-                    : mortgage.getLoanAmount();
+                        ? mortgage.getLoanAmount().divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP)
+                        : mortgage.getLoanAmount();
                 mortgage.setMonthlyPayment(monthlyPayment);
                 mortgage.setNextPaymentDay((int) Math.floor(state.getGameDay()) + 30);
             }
+        } else if (status == MortgageStatus.REJECTED) {
+            // Remove property from market even if rejected, as requested
+            if (product != null && product.getStatus() == ProductStatus.AVAILABLE) {
+                product.setStatus(ProductStatus.REMOVED);
+                productRepository.save(product);
+            }
         }
+
         mortgage.setStatus(status);
         mortgage.setUpdatedAt(Instant.now(clock));
         return mortgageRepository.save(mortgage);

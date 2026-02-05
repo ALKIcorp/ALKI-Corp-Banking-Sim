@@ -82,6 +82,7 @@ export default function ApplicationsScreen() {
       queryClient.invalidateQueries({ queryKey: ['mortgages', currentSlot] })
       queryClient.invalidateQueries({ queryKey: ['products', currentSlot] })
       queryClient.invalidateQueries({ queryKey: ['products', 'available-all'] })
+      queryClient.invalidateQueries({ queryKey: ['client-properties', currentSlot] })
     },
   })
 
@@ -328,7 +329,7 @@ export default function ApplicationsScreen() {
                         <tr key={mortgage.id}>
                           <td>{formatIsoDate(mortgage.createdAt)}</td>
                           <td>{clientNameById.get(String(mortgage.clientId)) || mortgage.clientId}</td>
-                          <td>{property ? property.name : mortgage.productId}</td>
+                          <td>{property ? property.name : (mortgage.productName || mortgage.productId)}</td>
                           <td>${formatCurrency(mortgage.loanAmount)}</td>
                           <td>
                             {mortgage.propertyPrice
@@ -367,9 +368,8 @@ export default function ApplicationsScreen() {
                                 </div>
                               ) : (
                                 <span
-                                  className={`text-xs ${
-                                    mortgage.status === 'ACCEPTED' ? 'text-green-600' : 'text-red-600'
-                                  }`}
+                                  className={`text-xs ${mortgage.status === 'ACCEPTED' ? 'text-green-600' : 'text-red-600'
+                                    }`}
                                 >
                                   Processed
                                 </span>

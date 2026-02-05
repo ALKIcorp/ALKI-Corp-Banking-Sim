@@ -13,11 +13,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PayrollService {
 
     private final ClientJobRepository clientJobRepository;
@@ -37,9 +39,19 @@ public class PayrollService {
 
     private void payClient(ClientJob cj, double gameDay) {
         Client client = cj.getClient();
-        BigDecimal pay = cj.getJob().getAnnualSalary().divide(BigDecimal.valueOf(26), 2, RoundingMode.HALF_UP);
+
+        // Calculate pay based on annual salary and pay cycle days.
+        // periodsPerYear = 365 / payCycleDays
+        // pay = annualSalary / periodsPerYear = annualSalary * payCycleDays / 365
+        BigDecimal pay = cj.getJob().getAnnualSalary()
+                .multiply(BigDecimal.valueOf(cj.getJob().getPayCycleDays()))
+                .divide(BigDecimal.valueOf(365), 2, RoundingMode.HALF_UP);
+
+        log.info("Processing payroll for client {}: {} (Job: {})", client.getId(), pay, cj.getJob().getTitle());
+
         client.setCheckingBalance(client.getCheckingBalance().add(pay));
         clientRepository.save(client);
+
         Transaction tx = new Transaction();
         tx.setClient(client);
         tx.setType(TransactionType.PAYROLL_DEPOSIT);
@@ -47,6 +59,7 @@ public class PayrollService {
         tx.setGameDay((int) Math.floor(gameDay));
         tx.setCreatedAt(Instant.now(clock));
         transactionRepository.save(tx);
+
         cj.setNextPayday(gameDay + cj.getJob().getPayCycleDays());
         clientJobRepository.save(cj);
     }
