@@ -14,6 +14,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByClientOrderByCreatedAtDesc(Client client);
     List<Transaction> findByClientIn(Collection<Client> clients);
     List<Transaction> findByClientInAndTypeInOrderByCreatedAtDesc(Collection<Client> clients, Collection<TransactionType> types);
+    List<Transaction> findByClientIdAndTypeInOrderByGameDayAscCreatedAtAsc(Long clientId, Collection<TransactionType> types);
     void deleteByClientIn(Collection<Client> clients);
 
     boolean existsByClientIdAndTypeAndGameDay(Long clientId, com.alkicorp.bankingsim.model.enums.TransactionType type, Integer gameDay);

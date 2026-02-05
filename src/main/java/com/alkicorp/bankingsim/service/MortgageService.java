@@ -105,33 +105,69 @@ public class MortgageService {
             if (mortgage.getClient() == null || mortgage.getClient().getId() == null) {
                 continue;
             }
+            if (mortgage.getStatus() != MortgageStatus.ACCEPTED) {
+                continue;
+            }
             byClient.computeIfAbsent(mortgage.getClient().getId(), k -> new ArrayList<>()).add(mortgage);
         }
         for (Map.Entry<Long, List<Mortgage>> entry : byClient.entrySet()) {
+            Long clientId = entry.getKey();
             List<Mortgage> clientMortgages = entry.getValue();
             clientMortgages.sort(Comparator
                     .comparing(Mortgage::getStartPaymentDay, Comparator.nullsLast(Integer::compareTo))
                     .thenComparing(Mortgage::getCreatedAt, Comparator.nullsLast(Instant::compareTo)));
-            for (int i = 0; i < clientMortgages.size(); i++) {
-                Mortgage mortgage = clientMortgages.get(i);
-                Integer startDay = mortgage.getStartPaymentDay();
-                if (startDay == null) {
-                    startDay = 0;
-                }
-                Integer endDay = null;
-                if (i + 1 < clientMortgages.size()) {
-                    Integer nextStart = clientMortgages.get(i + 1).getStartPaymentDay();
-                    if (nextStart != null) {
-                        endDay = nextStart;
+
+            Map<Long, BigDecimal> paidByMortgageId = new HashMap<>();
+            for (Mortgage mortgage : clientMortgages) {
+                BigDecimal downPayment = mortgage.getDownPayment() == null ? BigDecimal.ZERO : mortgage.getDownPayment();
+                paidByMortgageId.put(mortgage.getId(), downPayment.setScale(2, RoundingMode.HALF_UP));
+            }
+
+            List<Transaction> payments = transactionRepository
+                    .findByClientIdAndTypeInOrderByGameDayAscCreatedAtAsc(
+                            clientId,
+                            List.of(TransactionType.MORTGAGE_PAYMENT));
+
+            for (Transaction tx : payments) {
+                Mortgage best = null;
+                BigDecimal bestDiff = null;
+                for (Mortgage mortgage : clientMortgages) {
+                    Integer startDay = mortgage.getStartPaymentDay();
+                    if (startDay != null && tx.getGameDay() < startDay) {
+                        continue;
+                    }
+                    if (mortgage.getMonthlyPayment() == null) {
+                        continue;
+                    }
+                    BigDecimal currentPaid = paidByMortgageId.getOrDefault(mortgage.getId(), BigDecimal.ZERO);
+                    if (mortgage.getPropertyPrice() != null
+                            && currentPaid.compareTo(mortgage.getPropertyPrice()) >= 0) {
+                        continue;
+                    }
+                    BigDecimal diff = tx.getAmount().subtract(mortgage.getMonthlyPayment()).abs();
+                    if (best == null || diff.compareTo(bestDiff) < 0) {
+                        best = mortgage;
+                        bestDiff = diff;
+                    } else if (diff.compareTo(bestDiff) == 0 && best != null) {
+                        Integer bestStart = best.getStartPaymentDay();
+                        Integer candidateStart = mortgage.getStartPaymentDay();
+                        if (bestStart == null || (candidateStart != null && candidateStart < bestStart)) {
+                            best = mortgage;
+                            bestDiff = diff;
+                        }
                     }
                 }
-                BigDecimal paymentSum = transactionRepository.sumByClientAndTypesAndDayRange(
-                        entry.getKey(),
-                        List.of(TransactionType.MORTGAGE_PAYMENT),
-                        startDay,
-                        endDay);
-                BigDecimal downPayment = mortgage.getDownPayment() == null ? BigDecimal.ZERO : mortgage.getDownPayment();
-                BigDecimal recomputed = downPayment.add(paymentSum).setScale(2, RoundingMode.HALF_UP);
+                if (best != null) {
+                    BigDecimal updated = paidByMortgageId.getOrDefault(best.getId(), BigDecimal.ZERO)
+                            .add(tx.getAmount())
+                            .setScale(2, RoundingMode.HALF_UP);
+                    paidByMortgageId.put(best.getId(), updated);
+                }
+            }
+
+            for (Mortgage mortgage : clientMortgages) {
+                BigDecimal recomputed = paidByMortgageId.getOrDefault(mortgage.getId(), BigDecimal.ZERO)
+                        .setScale(2, RoundingMode.HALF_UP);
                 if (mortgage.getPropertyPrice() != null
                         && recomputed.compareTo(mortgage.getPropertyPrice()) > 0) {
                     recomputed = mortgage.getPropertyPrice().setScale(2, RoundingMode.HALF_UP);
