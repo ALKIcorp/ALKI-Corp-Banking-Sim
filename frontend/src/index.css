@@ -804,6 +804,19 @@ body {
   padding-bottom: 48px;
 }
 
+#client-view-screen .monthly-spending-card {
+  width: 100%;
+  padding: 18px !important;
+}
+
+@media (min-width: 900px) {
+  #client-view-screen .monthly-spending-card {
+    width: 33.3333%;
+    max-width: 33.3333%;
+    align-self: flex-start;
+  }
+}
+
 @media (max-width: 1100px) {
   #bank-view-screen .analytics-grid {
     grid-template-columns: 1fr;

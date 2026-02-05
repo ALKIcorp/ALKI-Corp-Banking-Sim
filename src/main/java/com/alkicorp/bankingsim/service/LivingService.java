@@ -76,6 +76,23 @@ public class LivingService {
         return clientLivingRepository.save(living);
     }
 
+    @Transactional
+    public ClientLiving clearLiving(int slotId, Long clientId) {
+        Client client = clientService.getClient(slotId, clientId);
+        ClientLiving living = clientLivingRepository.findByClientIdAndSlotId(clientId, slotId)
+                .orElse(new ClientLiving());
+        living.setClient(client);
+        living.setSlotId(slotId);
+        living.setLivingType(LivingType.NONE);
+        living.setRental(null);
+        living.setProperty(null);
+        living.setMonthlyRentCache(BigDecimal.ZERO);
+        living.setStartDate(Instant.now(clock));
+        living.setNextRentDay(0);
+        living.setDelinquent(false);
+        return clientLivingRepository.save(living);
+    }
+
     private int computeNextRentDay(int slotId) {
         User user = currentUserService.getCurrentUser();
         double gameDay = simulationService.getAndAdvanceState(user, slotId)

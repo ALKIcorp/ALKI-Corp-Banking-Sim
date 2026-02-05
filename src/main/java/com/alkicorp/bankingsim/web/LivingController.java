@@ -40,6 +40,12 @@ public class LivingController {
         return toLivingResponse(living);
     }
 
+    @PostMapping("/clients/{clientId}/living/none")
+    public LivingResponse clearLiving(@PathVariable int slotId, @PathVariable Long clientId) {
+        ClientLiving living = livingService.clearLiving(slotId, clientId);
+        return toLivingResponse(living);
+    }
+
     @GetMapping("/clients/{clientId}/living")
     public LivingResponse getLiving(@PathVariable int slotId, @PathVariable Long clientId) {
         ClientLiving living = livingService.getLiving(slotId, clientId);

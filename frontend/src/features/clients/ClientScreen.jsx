@@ -160,6 +160,15 @@ export default function ClientScreen() {
     onError: (err) => setError(err.message),
   })
 
+  const clearLivingMutation = useMutation({
+    mutationFn: ({ slotId, clientId: cid }) => apiFetch(`${API_BASE}/${slotId}/clients/${cid}/living/none`, { method: 'POST' }),
+    onSuccess: () => {
+      setSelectedRentalId('')
+      queryClient.invalidateQueries({ queryKey: ['living', currentSlot, clientId] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
   const assignOwnedMutation = useMutation({
     mutationFn: ({ slotId, clientId: cid, propertyId }) =>
       apiFetch(`${API_BASE}/${slotId}/clients/${cid}/living/owned/${propertyId}`, { method: 'POST' }),
@@ -494,13 +503,16 @@ export default function ClientScreen() {
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-1 uppercase">Living</h3>
           <p className="text-xs mb-2">
-            Current: {living ? living.livingType : 'Not set'}{' '}
+            Current: {living ? (living.livingType === 'NONE' ? 'None' : living.livingType) : 'Not set'}{' '}
             {living?.rentalId && `(Rental #${living.rentalId})`} {living?.propertyId && `(Property #${living.propertyId})`}{' '}
             {living?.monthlyRent ? `• Rent $${formatCurrency(living.monthlyRent)}` : ''}
           </p>
           <div className="flex gap-2 mb-2">
             <select className="bw-input flex-1" value={selectedRentalId} onChange={(e) => setSelectedRentalId(e.target.value)}>
-              <option value="">Choose rental</option>
+              <option value="" disabled hidden>
+                Choose rental
+              </option>
+              <option value="NONE">None (no rental)</option>
               {rentals.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name} ${formatCurrency(r.monthlyRent)}
@@ -511,9 +523,11 @@ export default function ClientScreen() {
               className="bw-button"
               onClick={() =>
                 selectedRentalId &&
-                assignRentalMutation.mutate({ slotId: currentSlot, clientId, rentalId: selectedRentalId })
+                (selectedRentalId === 'NONE'
+                  ? clearLivingMutation.mutate({ slotId: currentSlot, clientId })
+                  : assignRentalMutation.mutate({ slotId: currentSlot, clientId, rentalId: selectedRentalId }))
               }
-              disabled={assignRentalMutation.isPending}
+              disabled={assignRentalMutation.isPending || clearLivingMutation.isPending}
             >
               Set Rental
             </button>
@@ -629,7 +643,7 @@ export default function ClientScreen() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-lg border bg-white shadow-sm p-4">
+        <div className="monthly-spending-card mt-4 rounded-lg border bg-white shadow-sm p-6">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
             <span className="font-semibold text-gray-700">Monthly spending</span>
             <div className="flex items-center gap-2">
@@ -668,27 +682,20 @@ export default function ClientScreen() {
               <span>{getGameDateString(monthlyCashflow.gameMonth)}</span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-lg">💰</span>
-              <div className="text-[11px] uppercase text-gray-500">Income</div>
-              <div className="text-base font-semibold text-green-700">
-                ${formatCurrency(monthlyCashflow.income)}
-              </div>
+          <div className="flex flex-col gap-2 text-left text-sm">
+            <div className="flex items-center justify-between">
+              <span className="uppercase text-gray-500">Income</span>
+              <span className="font-semibold text-green-700">${formatCurrency(monthlyCashflow.income)}</span>
             </div>
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-lg">🛒</span>
-              <div className="text-[11px] uppercase text-gray-500">Spending</div>
-              <div className="text-base font-semibold text-red-700">
-                ${formatCurrency(monthlyCashflow.spending)}
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="uppercase text-gray-500">Spending</span>
+              <span className="font-semibold text-red-700">${formatCurrency(monthlyCashflow.spending)}</span>
             </div>
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-lg">{monthlyCashflow.net >= 0 ? '📈' : '📉'}</span>
-              <div className="text-[11px] uppercase text-gray-500">Net</div>
-              <div className={`text-base font-semibold ${monthlyCashflow.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <div className="flex items-center justify-between">
+              <span className="uppercase text-gray-500">Net</span>
+              <span className={`font-semibold ${monthlyCashflow.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                 ${formatCurrency(monthlyCashflow.net)}
-              </div>
+              </span>
             </div>
           </div>
           <div className="mt-3">
