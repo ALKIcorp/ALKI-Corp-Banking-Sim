@@ -7,6 +7,7 @@ import com.alkicorp.bankingsim.service.ProductService;
 import com.alkicorp.bankingsim.web.dto.ClientResponse;
 import com.alkicorp.bankingsim.web.dto.CreateClientRequest;
 import com.alkicorp.bankingsim.web.dto.MoneyRequest;
+import com.alkicorp.bankingsim.web.dto.MonthlyCashflowResponse;
 import com.alkicorp.bankingsim.web.dto.ProductResponse;
 import com.alkicorp.bankingsim.web.dto.TransactionResponse;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -54,6 +56,15 @@ public class ClientController {
     public List<TransactionResponse> getTransactions(@PathVariable int slotId, @PathVariable Long clientId) {
         List<Transaction> txs = clientService.getTransactions(clientId, slotId);
         return txs.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @GetMapping("/{clientId}/monthly-cashflow")
+    @Transactional(readOnly = true)
+    public MonthlyCashflowResponse getMonthlyCashflow(@PathVariable int slotId,
+            @PathVariable Long clientId,
+            @RequestParam int year,
+            @RequestParam int month) {
+        return clientService.getMonthlyCashflow(slotId, clientId, year, month);
     }
 
     @GetMapping("/{clientId}/properties")

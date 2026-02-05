@@ -3,9 +3,12 @@ package com.alkicorp.bankingsim.repository;
 import com.alkicorp.bankingsim.model.Client;
 import com.alkicorp.bankingsim.model.Transaction;
 import com.alkicorp.bankingsim.model.enums.TransactionType;
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     List<Transaction> findByClientOrderByCreatedAtDesc(Client client);
@@ -14,4 +17,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     void deleteByClientIn(Collection<Client> clients);
 
     boolean existsByClientIdAndTypeAndGameDay(Long clientId, com.alkicorp.bankingsim.model.enums.TransactionType type, Integer gameDay);
+
+    @Query("""
+            select
+              coalesce(sum(case when t.type in :depositTypes then t.amount else 0 end), 0) as income,
+              coalesce(sum(case when t.type in :depositTypes then 0 else t.amount end), 0) as spending
+            from Transaction t
+            where t.client.id = :clientId
+              and t.client.slotId = :slotId
+              and t.gameDay = :gameMonth
+            """)
+    MonthlyCashflowProjection findMonthlyCashflow(@Param("clientId") Long clientId,
+            @Param("slotId") Integer slotId,
+            @Param("gameMonth") Integer gameMonth,
+            @Param("depositTypes") Collection<TransactionType> depositTypes);
+
+    interface MonthlyCashflowProjection {
+        BigDecimal getIncome();
+        BigDecimal getSpending();
+    }
 }

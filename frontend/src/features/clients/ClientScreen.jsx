@@ -6,12 +6,13 @@ import Modal from '../../components/Modal.jsx'
 import { useSlot } from '../../providers/SlotProvider.jsx'
 import { useClients } from '../../hooks/useClients.js'
 import { useTransactions } from '../../hooks/useTransactions.js'
+import { useMonthlyCashflow } from '../../hooks/useMonthlyCashflow.js'
 import { useClientProperties } from '../../hooks/useMortgages.js'
 import { useJobs } from '../../hooks/useJobs.js'
 import { useRentals } from '../../hooks/useRentals.js'
 import { useLiving } from '../../hooks/useLiving.js'
 import { apiFetch } from '../../api.js'
-import { API_BASE, DAILY_WITHDRAWAL_LIMIT } from '../../constants.js'
+import { API_BASE, DAILY_WITHDRAWAL_LIMIT, DAYS_PER_YEAR } from '../../constants.js'
 import { formatCurrency, formatIsoDateTime, getGameDateString } from '../../utils.js'
 import PropertyImage from '../../components/PropertyImage.jsx'
 
@@ -30,6 +31,8 @@ export default function ClientScreen() {
   const [showTransactions, setShowTransactions] = useState(false)
   const [transactionTypeFilter, setTransactionTypeFilter] = useState('ALL')
   const [transactionDateOrder, setTransactionDateOrder] = useState('DESC')
+  const [selectedYear, setSelectedYear] = useState(null)
+  const [selectedMonth, setSelectedMonth] = useState(null)
 
   const depositTypes = useMemo(
     () =>
@@ -189,45 +192,76 @@ export default function ClientScreen() {
   const rentals = rentalsQuery.data || []
   const living = livingQuery.data || null
 
-  const monthToDateCashflow = useMemo(() => {
-    const currentGameMonth = selectedClient?.gameDay
-    if (currentGameMonth === null || currentGameMonth === undefined) {
-      return {
-        monthLabel: '—',
-        income: 0,
-        spending: 0,
-        net: 0,
-        spendingVsIncomePct: 0,
-        gameMonth: null,
-      }
-    }
-
-    let income = 0
-    let spending = 0
-
+  const availableMonthsByYear = useMemo(() => {
+    const monthMap = new Map()
     transactions.forEach((tx) => {
-      if (Number(tx.gameDay) === Number(currentGameMonth)) {
-        const amount = Number(tx.amount || 0)
-        if (depositTypes.has(tx.type)) {
-          income += amount
-        } else {
-          spending += amount
-        }
+      const gameMonth = Number(tx.gameDay)
+      if (!Number.isFinite(gameMonth)) return
+      const totalMonths = Math.floor(gameMonth)
+      const year = Math.floor(totalMonths / DAYS_PER_YEAR) + 1
+      const month = (totalMonths % DAYS_PER_YEAR) + 1
+      if (!monthMap.has(year)) {
+        monthMap.set(year, new Set())
       }
+      monthMap.get(year).add(month)
     })
+    return monthMap
+  }, [transactions])
 
-    const net = income - spending
-    const spendingVsIncomePct = income > 0 ? (spending / income) * 100 : 0
+  const availableYears = useMemo(
+    () => Array.from(availableMonthsByYear.keys()).sort((a, b) => a - b),
+    [availableMonthsByYear]
+  )
 
-    return {
-      monthLabel: getGameDateString(currentGameMonth),
-      gameMonth: currentGameMonth,
-      income,
-      spending,
-      net,
-      spendingVsIncomePct,
+  const availableMonths = useMemo(() => {
+    const months = availableMonthsByYear.get(selectedYear)
+    return months ? Array.from(months).sort((a, b) => a - b) : []
+  }, [availableMonthsByYear, selectedYear])
+
+  const lastGameMonth = useMemo(() => {
+    const transactionMonths = transactions
+      .map((tx) => Number(tx.gameDay))
+      .filter((month) => Number.isFinite(month))
+    return transactionMonths.length ? Math.max(...transactionMonths) : selectedClient?.gameDay
+  }, [selectedClient?.gameDay, transactions])
+
+  const defaultYearMonth = useMemo(() => {
+    if (lastGameMonth === null || lastGameMonth === undefined) return null
+    const totalMonths = Math.floor(Number(lastGameMonth))
+    const year = Math.floor(totalMonths / DAYS_PER_YEAR) + 1
+    const month = (totalMonths % DAYS_PER_YEAR) + 1
+    return { year, month }
+  }, [lastGameMonth])
+
+  useEffect(() => {
+    if ((selectedYear === null || selectedMonth === null) && defaultYearMonth) {
+      setSelectedYear(defaultYearMonth.year)
+      setSelectedMonth(defaultYearMonth.month)
+      return
     }
-  }, [depositTypes, selectedClient?.gameDay, transactions])
+    if (availableYears.length && selectedYear !== null && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[availableYears.length - 1])
+      return
+    }
+    if (availableMonths.length && selectedMonth !== null && !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1])
+    }
+  }, [availableMonths, availableYears, defaultYearMonth, selectedMonth, selectedYear])
+
+  const monthlyCashflowQuery = useMonthlyCashflow(currentSlot, clientId, selectedYear, selectedMonth, true)
+  const selectedGameMonth =
+    Number.isFinite(selectedYear) && Number.isFinite(selectedMonth)
+      ? (selectedYear - 1) * DAYS_PER_YEAR + (selectedMonth - 1)
+      : null
+  const monthlyCashflow = monthlyCashflowQuery.data || {
+    income: 0,
+    spending: 0,
+    net: 0,
+    spendingVsIncomePct: 0,
+    gameMonth: selectedGameMonth,
+  }
+  const yearOptions = availableYears.length ? availableYears : defaultYearMonth ? [defaultYearMonth.year] : []
+  const monthOptions = availableMonths.length ? availableMonths : defaultYearMonth ? [defaultYearMonth.month] : []
 
   const transactionTypeOptions = useMemo(() => {
     const uniqueTypes = new Set(transactions.map((tx) => tx.type))
@@ -597,45 +631,79 @@ export default function ClientScreen() {
 
         <div className="mt-4 rounded-lg border bg-white shadow-sm p-4">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-            <span className="font-semibold text-gray-700">Month-to-date</span>
-            <span>{monthToDateCashflow.monthLabel}</span>
+            <span className="font-semibold text-gray-700">Monthly spending</span>
+            <div className="flex items-center gap-2">
+              <select
+                className="bw-select-small"
+                value={selectedYear ?? ''}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+              >
+                {yearOptions.length === 0 && (
+                  <option value="" disabled>
+                    Year
+                  </option>
+                )}
+                {yearOptions.map((year) => (
+                  <option key={`year-${year}`} value={year}>
+                    Y{year}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="bw-select-small"
+                value={selectedMonth ?? ''}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              >
+                {monthOptions.length === 0 && (
+                  <option value="" disabled>
+                    Month
+                  </option>
+                )}
+                {monthOptions.map((month) => (
+                  <option key={`month-${month}`} value={month}>
+                    M{month}
+                  </option>
+                ))}
+              </select>
+              <span>{getGameDateString(monthlyCashflow.gameMonth)}</span>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="flex flex-col items-center gap-1">
               <span className="text-lg">💰</span>
               <div className="text-[11px] uppercase text-gray-500">Income</div>
               <div className="text-base font-semibold text-green-700">
-                ${formatCurrency(monthToDateCashflow.income)}
+                ${formatCurrency(monthlyCashflow.income)}
               </div>
             </div>
             <div className="flex flex-col items-center gap-1">
               <span className="text-lg">🛒</span>
               <div className="text-[11px] uppercase text-gray-500">Spending</div>
               <div className="text-base font-semibold text-red-700">
-                ${formatCurrency(monthToDateCashflow.spending)}
+                ${formatCurrency(monthlyCashflow.spending)}
               </div>
             </div>
             <div className="flex flex-col items-center gap-1">
-              <span className="text-lg">{monthToDateCashflow.net >= 0 ? '📈' : '📉'}</span>
+              <span className="text-lg">{monthlyCashflow.net >= 0 ? '📈' : '📉'}</span>
               <div className="text-[11px] uppercase text-gray-500">Net</div>
-              <div className={`text-base font-semibold ${monthToDateCashflow.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                ${formatCurrency(monthToDateCashflow.net)}
+              <div className={`text-base font-semibold ${monthlyCashflow.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                ${formatCurrency(monthlyCashflow.net)}
               </div>
             </div>
           </div>
           <div className="mt-3">
             <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
               <span>Spending vs income</span>
-              <span>{monthToDateCashflow.spendingVsIncomePct.toFixed(1)}%</span>
+              <span>{monthlyCashflow.spendingVsIncomePct.toFixed(1)}%</span>
             </div>
             <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
               <div
-                className={`h-2 ${monthToDateCashflow.spendingVsIncomePct <= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
-                style={{ width: `${Math.min(monthToDateCashflow.spendingVsIncomePct, 160)}%` }}
+                className={`h-2 ${monthlyCashflow.spendingVsIncomePct <= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                style={{ width: `${Math.min(monthlyCashflow.spendingVsIncomePct, 160)}%` }}
               />
             </div>
             <p className="text-[11px] text-gray-500 mt-1">
-              Window: {monthToDateCashflow.monthLabel} (resets each in‑game month; live updates with transactions)
+              Month: {getGameDateString(monthlyCashflow.gameMonth)} (resets each in‑game month)
             </p>
           </div>
         </div>

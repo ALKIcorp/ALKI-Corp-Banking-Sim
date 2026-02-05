@@ -10,12 +10,14 @@ import com.alkicorp.bankingsim.model.enums.TransactionType;
 import com.alkicorp.bankingsim.repository.ClientRepository;
 import com.alkicorp.bankingsim.repository.ClientJobRepository;
 import com.alkicorp.bankingsim.repository.TransactionRepository;
+import com.alkicorp.bankingsim.web.dto.MonthlyCashflowResponse;
 import jakarta.validation.ValidationException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,14 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class ClientService {
+
+    private static final EnumSet<TransactionType> DEPOSIT_TYPES = EnumSet.of(
+            TransactionType.DEPOSIT,
+            TransactionType.PAYROLL_DEPOSIT,
+            TransactionType.SAVINGS_DEPOSIT,
+            TransactionType.LOAN_DISBURSEMENT,
+            TransactionType.MORTGAGE_DOWN_PAYMENT_FUNDING,
+            TransactionType.PROPERTY_SALE);
 
     private final ClientRepository clientRepository;
     private final ClientJobRepository clientJobRepository;
@@ -162,6 +172,44 @@ public class ClientService {
                                 + "/start to initialize the slot."));
         Client client = getClient(slotId, clientId);
         return transactionRepository.findByClientOrderByCreatedAtDesc(client);
+    }
+
+    @Transactional(readOnly = true)
+    public MonthlyCashflowResponse getMonthlyCashflow(int slotId, Long clientId, int year, int month) {
+        if (year < 1) {
+            throw new ValidationException("Year must be >= 1.");
+        }
+        if (month < 1 || month > SimulationConstants.DAYS_PER_YEAR) {
+            throw new ValidationException("Month must be between 1 and " + SimulationConstants.DAYS_PER_YEAR + ".");
+        }
+        User user = currentUserService.getCurrentUser();
+        simulationService.getAndAdvanceState(user, slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Bank state not found for slot " + slotId + ". Use POST /api/slots/" + slotId
+                                + "/start to initialize the slot."));
+        getClient(slotId, clientId);
+        int gameMonth = (year - 1) * SimulationConstants.DAYS_PER_YEAR + (month - 1);
+
+        TransactionRepository.MonthlyCashflowProjection totals = transactionRepository.findMonthlyCashflow(
+                clientId,
+                slotId,
+                gameMonth,
+                DEPOSIT_TYPES);
+
+        BigDecimal income = totals != null && totals.getIncome() != null ? totals.getIncome() : BigDecimal.ZERO;
+        BigDecimal spending = totals != null && totals.getSpending() != null ? totals.getSpending() : BigDecimal.ZERO;
+        BigDecimal net = income.subtract(spending);
+        double spendingVsIncomePct = income.compareTo(BigDecimal.ZERO) > 0
+                ? spending.divide(income, 6, RoundingMode.HALF_UP).doubleValue() * 100
+                : 0d;
+
+        return MonthlyCashflowResponse.builder()
+                .gameMonth(gameMonth)
+                .income(income.setScale(2, RoundingMode.HALF_UP))
+                .spending(spending.setScale(2, RoundingMode.HALF_UP))
+                .net(net.setScale(2, RoundingMode.HALF_UP))
+                .spendingVsIncomePct(spendingVsIncomePct)
+                .build();
     }
 
     private Transaction recordTransaction(Client client, BankState state, TransactionType type, BigDecimal amount) {
